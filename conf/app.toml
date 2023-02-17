@@ -1,0 +1,11 @@
+host = "http://124.71.12.16:9933"
+chainId = 9090
+startHeight = 10
+
+[mysql]
+host=""
+user=""
+password=""
+
+[log]
+file = ""
