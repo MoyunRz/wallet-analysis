@@ -4,22 +4,20 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
 	"strings"
 	"testing"
-
-	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 func Test_api(t *testing.T) {
-	cli, err := ethclient.Dial("https://node.waltonchain.pro")
+	cli, err := ethclient.Dial("http://124.71.12.16:9933")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	block, err := cli.BlockByNumber(context.Background(), big.NewInt(2191574))
+	block, err := cli.BlockByNumber(context.Background(), big.NewInt(1))
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -36,18 +34,20 @@ func Test_api(t *testing.T) {
 	}
 	t.Log(String(receipt))
 }
+
 func Test_acc(t *testing.T) {
 	a := "0xa9059cbb0000000000000000000000005aa0729c9e76361c538df71d88d4b5b9fab9337600000000000000000000000000000000000000000000006054d4350ced240000"
 	t.Log(a[34:74])
 }
+
 func Test_acli(t *testing.T) {
-	rpc := NewRpcClient("https://node.waltonchain.pro", "1", "1")
+	rpc := NewRpcClient("https://node.waltonchain.pro")
 	h, err := rpc.BlockNumber()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 	t.Log(h)
-	block, err := rpc.BlockByNumber(2031462)
+	block, err := rpc.BlockByNumber(1)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

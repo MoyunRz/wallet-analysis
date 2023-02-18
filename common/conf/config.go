@@ -1,10 +1,7 @@
 package conf
 
 import (
-	"fmt"
 	"github.com/BurntSushi/toml"
-	"io/ioutil"
-	"strings"
 )
 
 var Cfg = new(Config)
@@ -12,56 +9,17 @@ var Cfg = new(Config)
 var defConfFile = "app.toml"
 
 func init() {
-
-	if evn, err := ioutil.ReadFile("../environment"); err != nil {
-		fmt.Println("获取环境文件失败：../environment,defualt \"test\" env(dev,test,pro)")
-	} else {
-		defConfFile = strings.Replace("app_"+string(evn)+".toml", "\n", "", -1)
-	}
-
 	if err := LoadConfig(defConfFile, Cfg); err != nil {
-		panic(err.Error())
+
 	}
 }
 
 type Config struct {
-	Name      string `toml:"name"`
-	Mode      string `toml:"mode"`
-	Server    ServerConfig
-	Log       LogConfig
-	Push      PushConfig
-	Sync      SyncConfig
-	DataBases map[string]DatabaseConfig
-	Nodes     map[string]NodeConfig
-}
-
-type FixConfig struct {
-	Name  string `toml:"name"`
-	Csv   CsvConfig
-	Log   LogConfig
-	Nodes map[string]NodeConfig
-}
-
-type CsvConfig struct {
-	Dir       string `toml:"dir"`
-	ReadFile  string `toml:"read_file"`
-	WriteFile string `toml:"write_file"`
-}
-
-type ServerConfig struct {
-	IP           string
-	Port         string
-	ReadTimeout  int `toml:"read_timeout"`
-	WriteTimeout int `toml:"write_timeout"`
-}
-
-type DatabaseConfig struct {
-	Name     string `toml:"name"`
-	Type     string `toml:"type"`
-	Url      string `toml:"url"`
-	User     string `toml:"user"`
-	PassWord string `toml:"password"`
-	Mode     string `toml:"mode"`
+	Mode        string    `toml:"mode"`
+	Host        string    `toml:"host"`
+	ChainId     int       `toml:"chainId"`
+	StartHeight int       `toml:"startHeight"`
+	Log         LogConfig `toml:"log"`
 }
 
 type LogConfig struct {
@@ -71,40 +29,6 @@ type LogConfig struct {
 	ErrFile   string `toml:"errfile"    json:"errfile"`
 }
 
-type PushConfig struct {
-	Enable     bool     `toml:"enable"`
-	Type       string   `toml:"type"`
-	Agent      bool     `toml:"agent"`
-	Url        string   `toml:"url"`
-	User       string   `toml:"user"`
-	Password   string   `toml:"password"`
-	MqUrl      string   `toml:"mqurl"`
-	Reconns    int      `toml:"reconns"`
-	Publishers []string `toml:"publishers"`
-}
-
-type SyncConfig struct {
-	Name            string `toml:"name"`
-	FullBackup      bool   `toml:"fullbackup"`
-	EnableSync      bool   `toml:"enablesync"`
-	EnableMempool   bool   `toml:"enablemempool"`
-	MultiScanNum    int64  `toml:"enablemultiscan"`
-	EnableGoroutine bool   `toml:"enablegoroutine"`
-	EpochCount      int64  `toml:"epochcount"`
-	EpochTime       int64  `toml:"epochtime"`
-	InitHeight      int64  `toml:"initheight"`
-	EnableRollback  bool   `toml:"enablerollback"`
-	RollHeight      int64  `toml:"rollheight"`
-	Confirmations   int64  `toml:"confirmations"`
-	IntervalTime    int64  `toml:"intervaltime"`
-}
-
-type NodeConfig struct {
-	Url       string `toml:"url"`
-	RPCKey    string `toml:"rpc_key"`
-	RPCSecret string `toml:"rpc_secret"`
-}
-
 // 从相对路径Load conf
 // 请传入指针类型
 func LoadConfig(cfgPath string, cfg *Config) error {
@@ -112,9 +36,6 @@ func LoadConfig(cfgPath string, cfg *Config) error {
 	if cfgPath == "" {
 		cfgPath = defConfFile
 	}
-	//} else {
-	//	cfgPath = "conf/app_"+cfgPath+".toml"
-	//}
 
 	if _, err := toml.DecodeFile(cfgPath, cfg); err != nil {
 		return err

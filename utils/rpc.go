@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -60,15 +59,12 @@ type RpcClient struct {
 }
 
 // NewRpcClient 使用给定的 url 创建新的 rpc RpcClient
-func NewRpcClient(url, username, password string, options ...func(rpc *RpcClient)) *RpcClient {
+func NewRpcClient(url string, options ...func(rpc *RpcClient)) *RpcClient {
 	rpc := &RpcClient{
 		client:      http.DefaultClient,
 		url:         url,
 		mutex:       &sync.Mutex{},
 		Credentials: "",
-	}
-	if username != "" {
-		rpc.Credentials = base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 	}
 	for _, option := range options {
 		option(rpc)

@@ -1,5 +1,7 @@
 package main
 
-func main() {
+import "wallet-analysis/service"
 
+func main() {
+	service.ScanBlock()
 }

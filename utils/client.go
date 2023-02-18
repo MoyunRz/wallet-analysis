@@ -1,14 +1,9 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
-
-func (rpc *RpcClient) BlockNumber() (int64, error) {
-	var result hexutil.Uint64
-	err := rpc.CallNoAuth("eth_blockNumber", &result)
-	return int64(result), err
-}
 
 type Block struct {
 	Number       hexutil.Big    `json:"number"`
@@ -20,6 +15,7 @@ type Block struct {
 	Timestamp    hexutil.Uint64 `json:"timestamp"`
 	Transactions []*Transaction `json:"transactions"`
 }
+
 type Transaction struct {
 	Hash             string         `json:"hash"`
 	BlockHash        string         `json:"blockHash"`
@@ -34,9 +30,21 @@ type Transaction struct {
 	Value            hexutil.Big    `json:"value"`
 }
 
-func (rpc *RpcClient) BlockByNumber(h int64) (*Block, error) {
+func (rpc *RpcClient) BlockNumber() (int, error) {
+	var result hexutil.Uint64
+	err := rpc.CallNoAuth("eth_blockNumber", &result)
+	return int(result), err
+}
+
+func (rpc *RpcClient) BlockByNumber(h int) (*Block, error) {
 	var result Block
 	err := rpc.CallNoAuth("eth_getBlockByNumber", &result, hexutil.Uint64(h).String(), true)
+	return &result, err
+}
+
+func (rpc *RpcClient) BlockByHash(hash string) (*Block, error) {
+	var result Block
+	err := rpc.CallNoAuth("eth_getBlockByHash", &result, hash, true)
 	return &result, err
 }
 
@@ -70,4 +78,19 @@ func (rpc *RpcClient) TransactionByHash(txhash string) (*Transaction, error) {
 	err := rpc.CallNoAuth("eth_getTransactionByHash", &result, txhash)
 	//result.Value = hexutil.Big(*big.NewInt(1233333333))
 	return &result, err
+}
+
+func (rpc *RpcClient) GetCode(address string) (bool, error) {
+	var getCode string
+
+	err := rpc.CallNoAuth("eth_getCode", &getCode, address, "latest")
+	if err != nil {
+		fmt.Println("错误:", err)
+	}
+	//fmt.Println("获得的代码:",getCode)
+	if getCode == "0x" {
+		return false, nil
+	} else {
+		return true, nil
+	}
 }

@@ -1,6 +1,9 @@
-host = "http://124.71.12.16:9933"
-chainId = 9090
-startHeight = 10
+mode = "test"
+#host = "http://124.71.12.16:9933"
+host = "http://119.23.219.232:9933"
+#chainId = 9090
+chainId = 42
+startHeight = 95203
 
 [mysql]
 host=""
@@ -8,4 +11,7 @@ user=""
 password=""
 
 [log]
-file = ""
+level = "info"
+formatter = ""
+outfile = "info.log"
+errfile = "err.log"
