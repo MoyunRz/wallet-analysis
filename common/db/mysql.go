@@ -12,10 +12,7 @@ import (
 )
 
 func init() {
-	if err := InitSyncDB(conf.Cfg.DataBases["sync"]); err != nil {
-		panic(err.Error())
-	}
-	if err := InitUserDB(conf.Cfg.DataBases["user"]); err != nil {
+	if err := InitSyncDB(conf.Cfg.DataBase); err != nil {
 		panic(err.Error())
 	}
 }

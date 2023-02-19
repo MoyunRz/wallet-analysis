@@ -15,11 +15,12 @@ func init() {
 }
 
 type Config struct {
-	Mode        string    `toml:"mode"`
-	Host        string    `toml:"host"`
-	ChainId     int       `toml:"chainId"`
-	StartHeight int       `toml:"startHeight"`
-	Log         LogConfig `toml:"log"`
+	Mode        string         `toml:"mode"`
+	Host        string         `toml:"host"`
+	ChainId     int            `toml:"chainId"`
+	StartHeight int            `toml:"startHeight"`
+	Log         LogConfig      `toml:"log"`
+	DataBase    DatabaseConfig `toml:"database"`
 }
 
 type LogConfig struct {
@@ -27,6 +28,15 @@ type LogConfig struct {
 	Formatter string `toml:"formatter"   json:"formatter"`
 	OutFile   string `toml:"outfile"    json:"outfile"`
 	ErrFile   string `toml:"errfile"    json:"errfile"`
+}
+
+type DatabaseConfig struct {
+	Name     string `toml:"name"`
+	Type     string `toml:"type"`
+	Url      string `toml:"url"`
+	User     string `toml:"user"`
+	PassWord string `toml:"password"`
+	Mode     string `toml:"mode"`
 }
 
 // 从相对路径Load conf
