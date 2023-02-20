@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
@@ -63,8 +62,4 @@ func Test_acli(t *testing.T) {
 	}
 
 	t.Log(receipt.Logs[0].Data, big.NewInt(0).SetBytes(d).String())
-}
-func String(d interface{}) string {
-	str, _ := json.Marshal(d)
-	return string(str)
 }

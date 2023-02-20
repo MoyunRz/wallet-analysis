@@ -9,12 +9,12 @@ startHeight = 95203
 type= "mysql"
 mode= "release"
 name= ""
-url= ""
-user= ""
-password= ""
+url= "127.0.0.1:3306"
+user= "root"
+password= "123456"
 
 [log]
 level = "info"
 formatter = ""
-outfile = "info.log"
-errfile = "err.log"
+outfile = "logs/info.log"
+errfile = "logs/err.log"

@@ -1,7 +1,7 @@
 package common
 
 import (
-	"wallet-analysis/models/po"
+	"wallet-analysis/models/blocks"
 )
 
 type ProcTask interface {

@@ -16,10 +16,7 @@ func init() {
 	}
 }
 
-var (
-	SyncConn *xorm.Engine
-	UserConn *xorm.Engine
-)
+var SyncConn *xorm.Engine
 
 // InitSyncDB2 连接数据库
 func InitSyncDB2(cfg conf.DatabaseConfig) error {
@@ -32,16 +29,6 @@ func InitSyncDB2(cfg conf.DatabaseConfig) error {
 	return nil
 }
 
-// InitUserDB2 连接数据库
-func InitUserDB2(cfg conf.DatabaseConfig) error {
-	dburl := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=true", cfg.User, cfg.PassWord, cfg.Url, cfg.Name)
-	conn, err := initDBConn(cfg.Type, dburl, cfg.Mode)
-	if err != nil {
-		return err
-	}
-	UserConn = conn
-	return nil
-}
 func initDBConn(dbType, dbUrl, dbMode string) (coin *xorm.Engine, err error) {
 	if dbUrl == "" || dbType == "" {
 		return nil, errors.New("empty databases config")

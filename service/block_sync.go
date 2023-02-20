@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
@@ -60,7 +61,8 @@ func GetTxInfoByHash(transactions []*utils.Transaction) {
 			return
 		}
 		// 交易事件处理
-		fmt.Println(receipt)
+		//log.Info("根据交易hash获取区块 receipt ",receipt)
+
 		EventHandle(receipt.Logs, receipt.TransactionHash)
 	}
 }
@@ -78,10 +80,15 @@ func ForwarderInputData(methodName string, res map[string]interface{}) {
 }
 
 func EventHandle(vLog []*utils.Log, hash string) {
-	fmt.Println("交易 vLog", vLog)
-	fmt.Println("交易hash", hash)
+	fmt.Println("扫链 交易hash", hash)
 	for j := 0; j < len(vLog); j++ {
 		vlog := vLog[j]
-		implEventByLogs(*vlog)
+		//这步是对监听到的DATA数据进行解析
+		decodedVData, err := hex.DecodeString(vlog.Data[2:])
+		if err != nil {
+			log.Fatal("对监听到的DATA数据进行解析，发生错误", err)
+		}
+		//这步是对监听到的DATA数据进行解析
+		implEventByLogs(vlog.Topics, decodedVData)
 	}
 }
