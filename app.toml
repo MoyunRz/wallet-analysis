@@ -9,10 +9,10 @@ isReStartScan= true
 [database]
 type= "mysql"
 mode= "release"
-name= ""
-url= "127.0.0.1:3306"
+name= "eth_blockchain"
+url= "52.83.177.130:3306"
 user= "root"
-password= "123456"
+password= "jlw999000"
 
 [log]
 level = "info"
