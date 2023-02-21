@@ -33,6 +33,13 @@ func (b *BlockInfo) Insert() error {
 	}
 	return nil
 }
+func (b *BlockInfo) GetMaxHeight() error {
+	_, err := db.SyncConn.Desc("height").Get(b)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // GetTxByHash
 // 根据 txhash 或者 用户地址 或者 区块高度获取交易
