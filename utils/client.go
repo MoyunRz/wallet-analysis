@@ -7,8 +7,11 @@ import (
 
 type Block struct {
 	Number       hexutil.Big    `json:"number"`
+	Miner        string         `json:"miner"`
 	Hash         string         `json:"hash"`
 	ParentHash   string         `json:"parentHash"`
+	ReceiptsRoot string         `json:"receiptsRoot"`
+	StateRoot    string         `json:"stateRoot"`
 	Difficulty   hexutil.Big    `json:"difficulty"`
 	GasLimit     hexutil.Big    `json:"gasLimit"`
 	GasUsed      hexutil.Big    `json:"gasUsed"`
@@ -30,13 +33,13 @@ type Transaction struct {
 	Value            hexutil.Big    `json:"value"`
 }
 
-func (rpc *RpcClient) BlockNumber() (int, error) {
+func (rpc *RpcClient) BlockNumber() (int64, error) {
 	var result hexutil.Uint64
 	err := rpc.CallNoAuth("eth_blockNumber", &result)
-	return int(result), err
+	return int64(result), err
 }
 
-func (rpc *RpcClient) BlockByNumber(h int) (*Block, error) {
+func (rpc *RpcClient) BlockByNumber(h int64) (*Block, error) {
 	var result Block
 	err := rpc.CallNoAuth("eth_getBlockByNumber", &result, hexutil.Uint64(h).String(), true)
 	return &result, err

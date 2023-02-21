@@ -3,6 +3,7 @@ package blocks
 import (
 	"time"
 	"wallet-analysis/common/db"
+	"xorm.io/xorm"
 )
 
 type ContractTx struct {
@@ -15,18 +16,30 @@ type ContractTx struct {
 	TokenId       string    `xorm:"VARCHAR(255)"`
 	Amount        string    `xorm:"DECIMAL(20,18)"`
 	LogIndex      int       `xorm:"INT"`
+	TxNonce       int       `xorm:"INT"`
 	CreatedAt     time.Time `xorm:"TIMESTAMP"`
 	UpdatedAt     time.Time `xorm:"TIMESTAMP"`
 	DeletedAt     time.Time `xorm:"TIMESTAMP"`
 	ExtraData     string    `xorm:"TEXT"`
+	Session       *xorm.Session
 }
 
-func (b *ContractTx) TableName() string {
+func (c *ContractTx) TableName() string {
 	return "contract_tx"
 }
 
-func (b *ContractTx) Insert() error {
-	_, err := db.SyncConn.Insert(b)
+func MakeContractTx(session *xorm.Session) (c *ContractTx) {
+	c = new(ContractTx)
+	if session != nil {
+		c.Session = session
+	} else {
+		c.Session = db.SyncConn.NewSession()
+	}
+	return c
+}
+
+func (c *ContractTx) Insert(ctx *ContractTx) error {
+	_, err := c.Session.Insert(ctx)
 	if err != nil {
 		return err
 	}
@@ -35,7 +48,7 @@ func (b *ContractTx) Insert() error {
 
 // GetTxByHash
 // 根据 txhash 或者 用户地址 或者 区块高度获取交易
-func (b *ContractTx) GetTxByHash(query string) ([]ContractTx, error) {
+func (c *ContractTx) GetTxByHash(query string) ([]ContractTx, error) {
 
 	blockList := make([]ContractTx, 0)
 	querySql := db.SyncConn.Where("tx_hash=?", query)
@@ -48,11 +61,11 @@ func (b *ContractTx) GetTxByHash(query string) ([]ContractTx, error) {
 
 // GetTxByHashOrAddressOrHeight
 // 根据 txhash 或者 用户地址 或者 区块高度获取交易
-func (b *ContractTx) GetTxByHashOrAddressOrHeight(query string, limit, start int) (int64, []ContractTx, error) {
+func (c *ContractTx) GetTxByHashOrAddressOrHeight(query string, limit, start int) (int64, []ContractTx, error) {
 
 	blockList := make([]ContractTx, 0)
 	querySql := db.SyncConn.Where("tx_hash=? or from_address=? or to_address=?", query, query, query)
-	total, err := querySql.Count(b)
+	total, err := querySql.Count(c)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -65,16 +78,14 @@ func (b *ContractTx) GetTxByHashOrAddressOrHeight(query string, limit, start int
 
 // GetTxByHashAndAddress
 // 根据 txhash\用户地址\tokenId获取交易
-func (b *ContractTx) GetTxByHashAndAddress(txHash, from, to string, tokenId, logIndex int) ([]ContractTx, error) {
+func (c *ContractTx) GetTxByHashAndAddress(txHash, from, to string, tokenId, logIndex int64) (*ContractTx, error) {
 
-	blockList := make([]ContractTx, 0)
-	querySql := db.SyncConn.Where("tx_hash=? and from_address=? and to_address=? and token_id=? and log_index =?",
-		txHash, from, to, tokenId, logIndex)
-
-	err := querySql.Find(&blockList)
+	var blockList = new(ContractTx)
+	_, err := db.SyncConn.Where("tx_hash=? and from_address=? and to_address=? and token_id=? and log_index =?",
+		txHash, from, to, tokenId, logIndex).Get(blockList)
 	if err != nil {
-		return blockList, err
+		return nil, err
 	}
 
-	return blockList, err
+	return blockList, nil
 }

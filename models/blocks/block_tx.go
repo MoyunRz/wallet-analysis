@@ -3,6 +3,7 @@ package blocks
 import (
 	"time"
 	"wallet-analysis/common/db"
+	"xorm.io/xorm"
 )
 
 type BlockTx struct {
@@ -10,7 +11,7 @@ type BlockTx struct {
 	TxHash      string    `xorm:"VARCHAR(255)"`
 	FromAddress string    `xorm:"VARCHAR(255)"`
 	ToAddress   string    `xorm:"VARCHAR(255)"`
-	BlockHeight int       `xorm:"INT"`
+	BlockHeight int64     `xorm:"INT"`
 	BlockHash   string    `xorm:"VARCHAR(255)"`
 	Amount      string    `xorm:"DECIMAL(20,18)"`
 	Fee         string    `xorm:"DECIMAL(20,18)"`
@@ -19,14 +20,36 @@ type BlockTx struct {
 	CreatedAt   time.Time `xorm:"TIMESTAMP"`
 	DeletedAt   time.Time `xorm:"TIMESTAMP"`
 	UpdatedAt   time.Time `xorm:"TIMESTAMP"`
+	Session     *xorm.Session
 }
 
 func (b *BlockTx) TableName() string {
 	return "block_tx"
 }
 
-func (b *BlockTx) Insert() error {
-	_, err := db.SyncConn.Insert(b)
+func MakeBlockTx(session *xorm.Session) (b *BlockTx) {
+	b = new(BlockTx)
+	if session != nil {
+		b.Session = session
+	} else {
+		b.Session = db.SyncConn.NewSession()
+	}
+	return b
+}
+
+func (b *BlockTx) Insert(newTx *BlockTx) error {
+	_, err := b.Session.Insert(newTx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateBlockTx
+// 更新区块信息
+func (b *BlockTx) UpdateBlockTx() error {
+	_, err := b.Session.Where("id=? ", b.Id).Update(b)
+
 	if err != nil {
 		return err
 	}
@@ -65,14 +88,11 @@ func (b *BlockTx) GetTxByHashOrAddressOrHeight(query string, height, limit, star
 
 // GetTxByHashAndAddress
 // 根据 txhash 或者 用户地址 或者 区块高度获取交易
-func (b *BlockTx) GetTxByHashAndAddress(txHash string, from, to string) ([]BlockTx, error) {
-
-	blockList := make([]BlockTx, 0)
-	querySql := db.SyncConn.Where("tx_hash=? and from_address=? and to_address=?", txHash, from, to)
-	err := querySql.Find(&blockList)
+func (b *BlockTx) GetTxByHashAndAddress(txHash string, from, to string) (*BlockTx, error) {
+	blockTx := new(BlockTx)
+	_, err := db.SyncConn.Where("tx_hash=? and from_address=? and to_address=?", txHash, from, to).Get(blockTx)
 	if err != nil {
-		return blockList, err
+		return nil, err
 	}
-
-	return blockList, err
+	return blockTx, nil
 }

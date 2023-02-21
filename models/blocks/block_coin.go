@@ -3,6 +3,7 @@ package blocks
 import (
 	"time"
 	"wallet-analysis/common/db"
+	"xorm.io/xorm"
 )
 
 type BlockCoin struct {
@@ -14,14 +15,25 @@ type BlockCoin struct {
 	CreatedAt        time.Time `xorm:"TIMESTAMP"`
 	UpdatedAt        time.Time `xorm:"TIMESTAMP"`
 	DeletedAt        time.Time `xorm:"TIMESTAMP"`
+	Session          *xorm.Session
 }
 
 func (b *BlockCoin) TableName() string {
 	return "block_coin"
 }
 
+func MakeBlockCoin(session *xorm.Session) (b *BlockCoin) {
+	b = new(BlockCoin)
+	if session != nil {
+		b.Session = session
+	} else {
+		b.Session = db.SyncConn.NewSession()
+	}
+	return b
+}
+
 func (b *BlockCoin) Insert() error {
-	_, err := db.SyncConn.Insert(b)
+	_, err := b.Session.Insert(b)
 	if err != nil {
 		return err
 	}

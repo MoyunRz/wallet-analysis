@@ -42,7 +42,8 @@ func StartSubscribe(cAddress string) {
 			for i := 0; i < len(vLog.Topics); i++ {
 				topics = append(topics, vLog.Topics[i].String())
 			}
-			implEventByLogs(topics, vLog.Data)
+
+			implEventByLogs(topics, vLog.Data, int(vLog.Index))
 		}
 	}
 }

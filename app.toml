@@ -4,6 +4,7 @@ host = "http://119.23.219.232:9933"
 #chainId = 9090
 chainId = 42
 startHeight = 95203
+isReStartScan= true
 
 [database]
 type= "mysql"

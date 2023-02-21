@@ -3,6 +3,7 @@ package blocks
 import (
 	"time"
 	"wallet-analysis/common/db"
+	"xorm.io/xorm"
 )
 
 type AccountAssets struct {
@@ -14,16 +15,27 @@ type AccountAssets struct {
 	CreatedAt  time.Time `xorm:"TIMESTAMP"`
 	UpdatedAt  time.Time `xorm:"TIMESTAMP"`
 	DeletedAt  time.Time `xorm:"TIMESTAMP"`
+	Session    *xorm.Session
 }
 
 func (a *AccountAssets) TableName() string {
 	return "account_assets"
 }
 
+func MakeAssets(session *xorm.Session) (a *AccountAssets) {
+	a = new(AccountAssets)
+	if session != nil {
+		a.Session = session
+	} else {
+		a.Session = db.SyncConn.NewSession()
+	}
+	return a
+}
+
 // Insert
 // 插入
 func (a *AccountAssets) Insert() error {
-	_, err := db.SyncConn.Insert(a)
+	_, err := a.Session.Insert(a)
 	if err != nil {
 		return err
 	}
@@ -33,7 +45,7 @@ func (a *AccountAssets) Insert() error {
 // UpdateAssets
 // 更新用户资产
 func (a *AccountAssets) UpdateAssets() error {
-	_, err := db.SyncConn.Where("id=? ", a.Id).Update(a)
+	_, err := a.Session.Where("id=? ", a.Id).Update(a)
 
 	if err != nil {
 		return err

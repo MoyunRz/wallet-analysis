@@ -3,6 +3,7 @@ package blocks
 import (
 	"time"
 	"wallet-analysis/common/db"
+	"xorm.io/xorm"
 )
 
 type BlockInfo struct {
@@ -14,29 +15,54 @@ type BlockInfo struct {
 	ReceiptsRoot   string    `xorm:"VARCHAR(255)"`
 	StateRoot      string    `xorm:"VARCHAR(255)"`
 	BlockStatus    int       `xorm:"INT"`
-	NextBlockHash  int       `xorm:"INT"`
 	BlockTimestamp time.Time `xorm:"TIMESTAMP"`
 	Transactions   int       `xorm:"INT"`
 	CreatedAt      time.Time `xorm:"TIMESTAMP"`
 	UpdatedAt      time.Time `xorm:"TIMESTAMP"`
 	DeletedAt      time.Time `xorm:"TIMESTAMP"`
+	Session        *xorm.Session
 }
 
 func (b *BlockInfo) TableName() string {
 	return "block_info"
 }
 
+func MakeBlockInfo(session *xorm.Session) (b *BlockInfo) {
+	b = new(BlockInfo)
+	if session != nil {
+		b.Session = session
+	} else {
+		b.Session = db.SyncConn.NewSession()
+	}
+	return b
+}
+
 func (b *BlockInfo) Insert() error {
-	_, err := db.SyncConn.Insert(b)
+	_, err := b.Session.Insert(b)
 	if err != nil {
 		return err
 	}
 	return nil
 }
-func (b *BlockInfo) GetMaxHeight() error {
-	_, err := db.SyncConn.Desc("height").Get(b)
+
+// UpdateBlockInfo
+// 更新区块信息
+func (b *BlockInfo) UpdateBlockInfo() error {
+	_, err := b.Session.Where("id=? ", b.Id).Update(b)
+
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (b *BlockInfo) GetMaxHeight() error {
+	isGet, err := db.SyncConn.Desc("height").Get(b)
+	if err != nil {
+		return err
+	}
+	if !isGet {
+		b.Height = 0
 	}
 	return nil
 }
@@ -44,7 +70,6 @@ func (b *BlockInfo) GetMaxHeight() error {
 // GetTxByHash
 // 根据 txhash 或者 用户地址 或者 区块高度获取交易
 func (b *BlockInfo) GetTxByHash(blockHash string) (bool, error) {
-
 	isGet, err := db.SyncConn.Where("block_hash=?", blockHash).Get(b)
 
 	if err != nil {
