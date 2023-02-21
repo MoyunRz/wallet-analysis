@@ -2,6 +2,7 @@ package blocks
 
 import (
 	"time"
+	"wallet-analysis/common/db"
 )
 
 type BlockInfo struct {
@@ -23,4 +24,31 @@ type BlockInfo struct {
 
 func (b *BlockInfo) TableName() string {
 	return "block_info"
+}
+
+func (b *BlockInfo) Insert() error {
+	_, err := db.SyncConn.Insert(b)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetTxByHash
+// 根据 txhash 或者 用户地址 或者 区块高度获取交易
+func (b *BlockInfo) GetTxByHash(blockHash string) (bool, error) {
+
+	isGet, err := db.SyncConn.Where("block_hash=?", blockHash).Get(b)
+
+	if err != nil {
+		return isGet, err
+	}
+	return isGet, nil
+}
+
+// GetTxByHashOrAddressOrHeight
+// 根据 txhash 或者 用户地址 或者 区块高度获取交易
+func (b *BlockInfo) GetTxByHashOrAddressOrHeight(blockHash string, height int) (bool, error) {
+
+	return db.SyncConn.Where("block_hash=? or height=? ", blockHash, height).Get(b)
 }
