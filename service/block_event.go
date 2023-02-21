@@ -118,7 +118,7 @@ func updateMintTx(session *xorm.Session, txHash string, intr []interface{}, txIn
 	// txType := intr[3].(*big.Int)
 	datas := intr[3].([]uint8)
 	// 合并相同交易组
-	txMap := merginTx(addrList, tokenIds, amounts)
+	txMap := mergingTx(addrList, tokenIds, amounts)
 
 	for addr, v := range txMap {
 		for tokenId, amount := range v {
@@ -157,7 +157,6 @@ func updateTransferSingleTx(session *xorm.Session, txHash string, list []interfa
 	to := list[2].(string)
 	tokenId := list[3].(int)
 	amount := list[3].(int)
-
 	tx, err := makeContractTx.GetTxByHashAndAddress(
 		txHash,
 		from,
@@ -183,7 +182,7 @@ func updateTransferSingleTx(session *xorm.Session, txHash string, list []interfa
 	}
 }
 
-func merginTx(addrList []common.Address, tokenIds, amounts []*big.Int) map[string]map[int64]int64 {
+func mergingTx(addrList []common.Address, tokenIds, amounts []*big.Int) map[string]map[int64]int64 {
 
 	txMap := map[string]map[int64]int64{}
 
