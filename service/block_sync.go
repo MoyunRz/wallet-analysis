@@ -105,7 +105,6 @@ func GetTxInfoByHash(block *utils.Block) {
 		return
 	}
 	blockTx := blocks.MakeBlockTx(session)
-
 	var wg sync.WaitGroup
 	ch := make(chan struct{}, 6)
 
