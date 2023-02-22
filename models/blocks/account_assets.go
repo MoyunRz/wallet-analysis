@@ -7,15 +7,15 @@ import (
 )
 
 type AccountAssets struct {
-	Id         int64     `xorm:"pk autoincr BIGINT"`
-	ContractId int       `xorm:"INT"`
-	Address    string    `xorm:"VARCHAR(255)"`
-	TokenId    string    `xorm:"VARCHAR(255)"`
-	TokenNums  int64     `xorm:"BIGINT"`
-	CreatedAt  time.Time `xorm:"TIMESTAMP"`
-	UpdatedAt  time.Time `xorm:"TIMESTAMP"`
-	DeletedAt  time.Time `xorm:"TIMESTAMP"`
-	Session    *xorm.Session
+	Id         int64         `xorm:"pk autoincr BIGINT"`
+	ContractId int           `xorm:"INT"`
+	Address    string        `xorm:"VARCHAR(255)"`
+	TokenId    string        `xorm:"VARCHAR(255)"`
+	TokenNums  int64         `xorm:"BIGINT"`
+	CreatedAt  time.Time     `xorm:"TIMESTAMP"`
+	UpdatedAt  time.Time     `xorm:"TIMESTAMP"`
+	DeletedAt  time.Time     `xorm:"TIMESTAMP"`
+	Session    *xorm.Session `xorm:"-"`
 }
 
 func (a *AccountAssets) TableName() string {

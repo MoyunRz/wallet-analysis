@@ -11,7 +11,6 @@ import (
 	"wallet-analysis/common/log"
 	"wallet-analysis/models/blocks"
 	"wallet-analysis/utils"
-	"xorm.io/xorm"
 )
 
 var Rpc *utils.RpcClient
@@ -40,8 +39,10 @@ func ScanBlock() {
 		log.Fatal(err.Error())
 		return
 	}
+	log.Info("当前高度 ---> ", lasterHeight)
 	// 循环解析
 	for i := scanHeight; i < (lasterHeight - 12); i++ {
+		log.Info("扫描高度 ---> ", scanHeight)
 		// 根据区块高度获取区块
 		block, err := GetBlockByHeight(i)
 		if err != nil {
@@ -50,7 +51,6 @@ func ScanBlock() {
 		}
 		// 处理区块内的交易
 		GetTxInfoByHash(block)
-
 		// 处理完成 写入数据库
 		writeBlockToDB(block)
 	}
@@ -101,7 +101,7 @@ func GetTxInfoByHash(block *utils.Block) {
 		}
 		// 添加交易
 		btx, err := blockTx.GetTxByHashAndAddress(receipt.TransactionHash, receipt.From, receipt.To)
-		rollbackSession(session, err)
+		db.RollbackSession(session, err)
 		btx.Session = session
 		if btx == nil {
 			// 插入
@@ -116,11 +116,11 @@ func GetTxInfoByHash(block *utils.Block) {
 				TxStatus:    receipt.Status.String(),
 				TxTimestamp: time.Unix(int64(block.Timestamp), 0),
 			})
-			rollbackSession(session, err)
+			db.RollbackSession(session, err)
 		}
 	}
 	err = session.Commit()
-	rollbackSession(session, err)
+	db.RollbackSession(session, err)
 }
 
 func EventHandle(vLog []*utils.Log, hash string) {
@@ -134,7 +134,7 @@ func EventHandle(vLog []*utils.Log, hash string) {
 			return
 		}
 		//这步是对监听到的DATA数据进行解析
-		implEventByLogs(vlog.Topics, decodedVData, int(vlog.LogIndex))
+		implEventByLogs(vlog.Topics, decodedVData, hash, int(vlog.LogIndex))
 	}
 }
 
@@ -180,21 +180,8 @@ func writeBlockToDB(block *utils.Block) {
 	} else {
 		err = blockInfo.Insert()
 	}
-	rollbackSession(session, err)
+	db.RollbackSession(session, err)
 	// add Commit() after all actions
 	err = session.Commit()
-	rollbackSession(session, err)
-}
-
-func rollbackSession(session *xorm.Session, err error) {
-
-	if err != nil {
-		err = session.Rollback()
-		if err != nil {
-			log.Fatal(err.Error())
-			return
-		}
-		log.Fatal(err.Error())
-		return
-	}
+	db.RollbackSession(session, err)
 }

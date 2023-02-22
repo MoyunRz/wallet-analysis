@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"time"
 	"wallet-analysis/common/conf"
+	"wallet-analysis/common/log"
 
 	_ "github.com/go-sql-driver/mysql"
 	"xorm.io/xorm"
 )
 
 func init() {
-	if err := InitSyncDB2(conf.Cfg.DataBase); err != nil {
+	err := InitSyncDB2(conf.Cfg.DataBase)
+	if err != nil {
 		panic(err.Error())
 	}
 }
@@ -21,7 +23,7 @@ var SyncConn *xorm.Engine
 // InitSyncDB2 连接数据库
 func InitSyncDB2(cfg conf.DatabaseConfig) error {
 	dburl := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=true", cfg.User, cfg.PassWord, cfg.Url, cfg.Name)
-	conn, err := initDBConn(cfg.Type, dburl, cfg.Mode)
+	conn, err := initDBConn(cfg.Type, dburl)
 	if err != nil {
 		return err
 	}
@@ -29,7 +31,7 @@ func InitSyncDB2(cfg conf.DatabaseConfig) error {
 	return nil
 }
 
-func initDBConn(dbType, dbUrl, dbMode string) (coin *xorm.Engine, err error) {
+func initDBConn(dbType, dbUrl string) (coin *xorm.Engine, err error) {
 	if dbUrl == "" || dbType == "" {
 		return nil, errors.New("empty databases config")
 	}
@@ -47,4 +49,18 @@ func initDBConn(dbType, dbUrl, dbMode string) (coin *xorm.Engine, err error) {
 	//conn.ShowSQL(true)
 	//conn.ShowExecTime(true)
 	return conn, nil
+}
+
+func RollbackSession(session *xorm.Session, err error) {
+
+	if err != nil {
+
+		err1 := session.Rollback()
+		if err1 != nil {
+			log.Fatal(err1.Error())
+			return
+		}
+		log.Fatal(err.Error())
+		return
+	}
 }

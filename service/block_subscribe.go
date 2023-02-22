@@ -14,8 +14,8 @@ var logChan = make(chan utils.Log)
 // StartSubscribe
 // 开始区块事件订阅
 func StartSubscribe(cAddress string) {
-	cli := utils.EthClient
-	if cli == nil {
+	cli, err := utils.MakeClient()
+	if err == nil {
 		log.Error("开始区块事件订阅失败，无法进行socket连接eth")
 		return
 	}
@@ -43,7 +43,7 @@ func StartSubscribe(cAddress string) {
 				topics = append(topics, vLog.Topics[i].String())
 			}
 
-			implEventByLogs(topics, vLog.Data, int(vLog.Index))
+			implEventByLogs(topics, vLog.Data, vLog.TxHash.String(), int(vLog.Index))
 		}
 	}
 }

@@ -1,4 +1,6 @@
-[
+package utils
+
+const eventAbiStr = `[
     {
 		"anonymous": false,
 		"inputs": [
@@ -349,3 +351,4 @@
     		"type": "event"
     	}
 ]
+`

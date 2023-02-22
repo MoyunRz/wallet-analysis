@@ -7,21 +7,21 @@ import (
 )
 
 type ContractTx struct {
-	Id            int64     `xorm:"pk autoincr BIGINT"`
-	TxHash        string    `xorm:"VARCHAR(255)"`
-	ContractId    int       `xorm:"INT"`
-	ContractEvent string    `xorm:"VARCHAR(255)"`
-	FromAddress   string    `xorm:"VARCHAR(255)"`
-	ToAddress     string    `xorm:"VARCHAR(255)"`
-	TokenId       string    `xorm:"VARCHAR(255)"`
-	Amount        string    `xorm:"DECIMAL(20,18)"`
-	LogIndex      int       `xorm:"INT"`
-	TxNonce       int       `xorm:"INT"`
-	CreatedAt     time.Time `xorm:"TIMESTAMP"`
-	UpdatedAt     time.Time `xorm:"TIMESTAMP"`
-	DeletedAt     time.Time `xorm:"TIMESTAMP"`
-	ExtraData     string    `xorm:"TEXT"`
-	Session       *xorm.Session
+	Id            int64         `xorm:"pk autoincr BIGINT"`
+	TxHash        string        `xorm:"VARCHAR(255)"`
+	ContractId    int           `xorm:"INT"`
+	ContractEvent string        `xorm:"VARCHAR(255)"`
+	FromAddress   string        `xorm:"VARCHAR(255)"`
+	ToAddress     string        `xorm:"VARCHAR(255)"`
+	TokenId       string        `xorm:"VARCHAR(255)"`
+	Amount        string        `xorm:"DECIMAL(20,18)"`
+	LogIndex      int           `xorm:"INT"`
+	TxNonce       int           `xorm:"INT"`
+	CreatedAt     time.Time     `xorm:"TIMESTAMP"`
+	UpdatedAt     time.Time     `xorm:"TIMESTAMP"`
+	DeletedAt     time.Time     `xorm:"TIMESTAMP"`
+	ExtraData     string        `xorm:"TEXT"`
+	Session       *xorm.Session `xorm:"-"`
 }
 
 func (c *ContractTx) TableName() string {

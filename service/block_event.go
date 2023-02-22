@@ -1,15 +1,10 @@
 package service
 
 import (
-	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"math/big"
-	"strings"
 	"wallet-analysis/common/db"
 	"wallet-analysis/common/log"
-	"wallet-analysis/models/blocks"
+	"wallet-analysis/service/events"
 	"wallet-analysis/utils"
-	"xorm.io/xorm"
 )
 
 func init() {
@@ -35,8 +30,8 @@ func implEventByLogs(topics []string, decodedVData []byte, hash string, txIndex 
 		if err != nil {
 			log.Fatal(err)
 		}
-		//打印监听到的参数
-		updateMintTx(session, hash, intr, txIndex)
+		// 进行事件处理
+		events.UpdateMintTx(session, hash, intr, txIndex)
 		break
 	// 交易事件 TransferLog
 	case "0x832711906223d7b1424466041e692f503b3467cdb4d5dbc5f746adfc531da26d":
@@ -77,7 +72,7 @@ func implEventByLogs(topics []string, decodedVData []byte, hash string, txIndex 
 			log.Fatal(err)
 		}
 		var list []interface{}
-		list = append(list, GetIndexedAddress(topics[1]), GetIndexedAddress(topics[2]), GetIndexedAddress(topics[3]))
+		list = append(list, events.GetIndexedAddress(topics[1]), events.GetIndexedAddress(topics[2]), events.GetIndexedAddress(topics[3]))
 		for _, v := range intr {
 			list = append(list, v)
 		}
@@ -93,7 +88,7 @@ func implEventByLogs(topics []string, decodedVData []byte, hash string, txIndex 
 			log.Fatal(err)
 		}
 		var list []interface{}
-		list = append(list, GetIndexedAddress(topics[1]), GetIndexedAddress(topics[2]), GetIndexedAddress(topics[3]))
+		list = append(list, events.GetIndexedAddress(topics[1]), events.GetIndexedAddress(topics[2]), events.GetIndexedAddress(topics[3]))
 		for _, v := range intr {
 			list = append(list, v)
 		}
@@ -102,107 +97,4 @@ func implEventByLogs(topics []string, decodedVData []byte, hash string, txIndex 
 		log.Info(list)
 		break
 	}
-}
-
-func GetIndexedAddress(topics string) string {
-	return strings.Replace(topics, "0x000000000000000000000000", "0x", 1)
-}
-
-// updateMintTx
-// 更新合约铸造交易
-func updateMintTx(session *xorm.Session, txHash string, intr []interface{}, txIndex int) {
-	makeContractTx := blocks.MakeContractTx(session)
-	addrList := intr[0].([]common.Address)
-	tokenIds := intr[1].([]*big.Int)
-	amounts := intr[2].([]*big.Int)
-	// txType := intr[3].(*big.Int)
-	datas := intr[3].([]uint8)
-	// 合并相同交易组
-	txMap := mergingTx(addrList, tokenIds, amounts)
-
-	for addr, v := range txMap {
-		for tokenId, amount := range v {
-			tx, err := makeContractTx.GetTxByHashAndAddress(
-				txHash,
-				"0x0000000000000000000000000000000000000000000000000000000000000000",
-				addr,
-				tokenId,
-				int64(txIndex),
-			)
-			rollbackSession(session, err)
-			if tx == nil {
-				err = makeContractTx.Insert(&blocks.ContractTx{
-					TxHash:        txHash,
-					ContractId:    1,
-					ContractEvent: "MintLog",
-					FromAddress:   "0x0000000000000000000000000000000000000000000000000000000000000000",
-					ToAddress:     addr,
-					TokenId:       fmt.Sprintf("%d", tokenId),
-					Amount:        fmt.Sprintf("%d", amount),
-					LogIndex:      txIndex,
-					ExtraData:     fmt.Sprintf("%s", datas[:]),
-				})
-				rollbackSession(session, err)
-			}
-		}
-	}
-}
-
-// updateTransferSingleTx
-// 更新合约单笔转账交易
-func updateTransferSingleTx(session *xorm.Session, txHash string, list []interface{}, txIndex int) {
-	makeContractTx := blocks.MakeContractTx(session)
-	//sender := list[0].(string)
-	from := list[1].(string)
-	to := list[2].(string)
-	tokenId := list[3].(int)
-	amount := list[3].(int)
-	tx, err := makeContractTx.GetTxByHashAndAddress(
-		txHash,
-		from,
-		to,
-		int64(tokenId),
-		int64(txIndex),
-	)
-	rollbackSession(session, err)
-
-	if tx == nil {
-		err = makeContractTx.Insert(&blocks.ContractTx{
-			TxHash:        txHash,
-			ContractId:    1,
-			ContractEvent: "TransferSingle",
-			FromAddress:   from,
-			ToAddress:     to,
-			TokenId:       fmt.Sprintf("%d", tokenId),
-			Amount:        fmt.Sprintf("%d", amount),
-			LogIndex:      txIndex,
-			ExtraData:     "",
-		})
-		rollbackSession(session, err)
-	}
-}
-
-func mergingTx(addrList []common.Address, tokenIds, amounts []*big.Int) map[string]map[int64]int64 {
-
-	txMap := map[string]map[int64]int64{}
-
-	// 合并相同交易组
-	for i := 0; i < len(addrList); i++ {
-		t := txMap[addrList[i].String()]
-		if t != nil {
-			tm := t[tokenIds[i].Int64()]
-			if tm != 0 {
-				tm += amounts[i].Int64()
-				var n = map[int64]int64{}
-				n[tokenIds[i].Int64()] = tm
-				txMap[addrList[i].String()] = n
-			}
-		} else {
-			var n = map[int64]int64{}
-			n[tokenIds[i].Int64()] = amounts[i].Int64()
-			txMap[addrList[i].String()] = n
-		}
-	}
-
-	return txMap
 }

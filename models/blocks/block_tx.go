@@ -7,20 +7,20 @@ import (
 )
 
 type BlockTx struct {
-	Id          int64     `xorm:"pk autoincr BIGINT"`
-	TxHash      string    `xorm:"VARCHAR(255)"`
-	FromAddress string    `xorm:"VARCHAR(255)"`
-	ToAddress   string    `xorm:"VARCHAR(255)"`
-	BlockHeight int64     `xorm:"INT"`
-	BlockHash   string    `xorm:"VARCHAR(255)"`
-	Amount      string    `xorm:"DECIMAL(20,18)"`
-	Fee         string    `xorm:"DECIMAL(20,18)"`
-	TxStatus    string    `xorm:"VARCHAR(255)"`
-	TxTimestamp time.Time `xorm:"TIMESTAMP"`
-	CreatedAt   time.Time `xorm:"TIMESTAMP"`
-	DeletedAt   time.Time `xorm:"TIMESTAMP"`
-	UpdatedAt   time.Time `xorm:"TIMESTAMP"`
-	Session     *xorm.Session
+	Id          int64         `xorm:"pk autoincr BIGINT"`
+	TxHash      string        `xorm:"VARCHAR(255)"`
+	FromAddress string        `xorm:"VARCHAR(255)"`
+	ToAddress   string        `xorm:"VARCHAR(255)"`
+	BlockHeight int64         `xorm:"INT"`
+	BlockHash   string        `xorm:"VARCHAR(255)"`
+	Amount      string        `xorm:"DECIMAL(20,18)"`
+	Fee         string        `xorm:"DECIMAL(20,18)"`
+	TxStatus    string        `xorm:"VARCHAR(255)"`
+	TxTimestamp time.Time     `xorm:"TIMESTAMP"`
+	CreatedAt   time.Time     `xorm:"TIMESTAMP"`
+	DeletedAt   time.Time     `xorm:"TIMESTAMP"`
+	UpdatedAt   time.Time     `xorm:"TIMESTAMP"`
+	Session     *xorm.Session `xorm:"-"`
 }
 
 func (b *BlockTx) TableName() string {
