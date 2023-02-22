@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
+	"sync"
 	"time"
 	"wallet-analysis/common/conf"
 	"wallet-analysis/common/db"
@@ -20,39 +21,68 @@ func init() {
 }
 
 func ScanBlock() {
-	scanHeight := int64(0)
-	blockInfo := new(blocks.BlockInfo)
-	// 获取数据库的区块高度
-	if conf.Cfg.IsReStartScan {
-		scanHeight = conf.Cfg.StartHeight
-	} else {
-		err := blockInfo.GetMaxHeight()
-		if err != nil {
-			log.Fatal(err.Error())
-			return
-		}
-		scanHeight = blockInfo.Height
-	}
+	// 计算间隔休眠时间
+	// 设12秒一个块
+	// (结束的时间 - 处理的开始时间)/12 = 出块的个数
+	// 出块的个数 > 12 则不休眠
+	// 出块的个数 < 12 则：(12 - 出块的个数) * 12 = 休眠时间
+	sleepTime := 1
 
-	lasterHeight, err := Rpc.BlockNumber()
-	if err != nil {
-		log.Fatal(err.Error())
-		return
-	}
-	log.Info("当前高度 ---> ", lasterHeight)
-	// 循环解析
-	for i := scanHeight; i < (lasterHeight - 12); i++ {
-		log.Info("扫描高度 ---> ", scanHeight)
-		// 根据区块高度获取区块
-		block, err := GetBlockByHeight(i)
+	for {
+		scanHeight := int64(0)
+		blockInfo := blocks.MakeBlockInfo(nil)
+		startTime := time.Now().Unix()
+		// 获取数据库的区块高度
+		if conf.Cfg.IsReStartScan {
+			log.Info("根据配置文件高度来扫描 高度 ===> ", conf.Cfg.StartHeight)
+			scanHeight = conf.Cfg.StartHeight
+		} else {
+			err := blockInfo.GetMaxHeight()
+			if err != nil {
+				log.Fatal(err.Error())
+				return
+			}
+			log.Info("根据数据库高度来扫描 高度 ===> ", blockInfo.Height)
+			scanHeight = blockInfo.Height
+		}
+
+		lasterHeight, err := Rpc.BlockNumber()
 		if err != nil {
 			log.Fatal(err.Error())
 			return
 		}
-		// 处理区块内的交易
-		GetTxInfoByHash(block)
-		// 处理完成 写入数据库
-		writeBlockToDB(block)
+		var wg sync.WaitGroup
+		ch := make(chan struct{}, 12)
+		// 循环解析
+		for i := scanHeight; i < (lasterHeight - 12); i++ {
+			ch <- struct{}{}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				log.Info("扫描高度 ---> ", i)
+				// 根据区块高度获取区块
+				block, err := GetBlockByHeight(i)
+				if err != nil {
+					log.Fatal(err.Error())
+					return
+				}
+				// 处理区块内的交易
+				GetTxInfoByHash(block)
+				// 处理完成 写入数据库
+				writeBlockToDB(block)
+				time.Sleep(time.Duration(500))
+				<-ch
+			}()
+		}
+		wg.Wait()
+		endTime := time.Now().Unix()
+		newBlocks := (endTime - startTime) / 12
+		if newBlocks > 12 {
+			sleepTime = 1
+		} else {
+			sleepTime = int(12 * (12 - newBlocks))
+		}
+		time.Sleep(time.Second * time.Duration(newBlocks))
 	}
 }
 
@@ -102,25 +132,23 @@ func GetTxInfoByHash(block *utils.Block) {
 		// 添加交易
 		btx, err := blockTx.GetTxByHashAndAddress(receipt.TransactionHash, receipt.From, receipt.To)
 		db.RollbackSession(session, err)
-		btx.Session = session
 		if btx == nil {
-			// 插入
-			err = btx.Insert(&blocks.BlockTx{
+			log.Info("添加ETH交易")
+			err = blockTx.Insert(&blocks.BlockTx{
 				TxHash:      receipt.TransactionHash,
 				FromAddress: receipt.From,
 				ToAddress:   receipt.To,
 				BlockHeight: block.Number.ToInt().Int64(),
 				BlockHash:   receipt.BlockHash,
 				Amount:      trans.Value.ToInt().String(),
-				Fee:         trans.Gas.String(),
-				TxStatus:    receipt.Status.String(),
+				Fee:         fmt.Sprintf("%d", int64(trans.Gas)),
+				TxStatus:    fmt.Sprintf("%d", int(receipt.Status)),
 				TxTimestamp: time.Unix(int64(block.Timestamp), 0),
 			})
 			db.RollbackSession(session, err)
 		}
 	}
-	err = session.Commit()
-	db.RollbackSession(session, err)
+	db.RollbackSession(session, session.Commit())
 }
 
 func EventHandle(vLog []*utils.Log, hash string) {

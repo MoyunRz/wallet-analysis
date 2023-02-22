@@ -11,7 +11,7 @@ type AccountAssets struct {
 	ContractId int           `xorm:"INT"`
 	Address    string        `xorm:"VARCHAR(255)"`
 	TokenId    string        `xorm:"VARCHAR(255)"`
-	TokenNums  int64         `xorm:"BIGINT"`
+	TokenNums  string        `xorm:"not null default 0.00 decimal(40,18)"`
 	CreatedAt  time.Time     `xorm:"TIMESTAMP"`
 	UpdatedAt  time.Time     `xorm:"TIMESTAMP"`
 	DeletedAt  time.Time     `xorm:"TIMESTAMP"`
@@ -53,10 +53,8 @@ func (a *AccountAssets) UpdateAssets() error {
 	return nil
 }
 
-func (a *AccountAssets) GetAssets(cid, tokenId int, address string) error {
-	_, err := db.SyncConn.
-		Where("contract_id=? and token_id and address =?", cid, tokenId, address).
-		Get(a)
+func (a *AccountAssets) GetAssets(cid int, tokenId, address string) error {
+	_, err := db.SyncConn.Where("contract_id=? and token_id=? and address =?", cid, tokenId, address).Get(a)
 	if err != nil {
 		return err
 	}

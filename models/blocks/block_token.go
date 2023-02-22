@@ -51,7 +51,7 @@ func (b *BlockToken) FindAll() ([]BlockToken, error) {
 
 func (b *BlockToken) GetToken(tokenType string) (*BlockToken, error) {
 	blockToken := new(BlockToken)
-	_, err := db.SyncConn.Where("contract_type=?", tokenType).Get(&blockToken)
+	_, err := db.SyncConn.Where("contract_type=?", tokenType).Get(blockToken)
 	if err != nil {
 		return nil, err
 	}

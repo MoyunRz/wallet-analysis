@@ -1,7 +1,6 @@
 package service
 
 import (
-	"wallet-analysis/common/db"
 	"wallet-analysis/common/log"
 	"wallet-analysis/service/events"
 	"wallet-analysis/utils"
@@ -11,15 +10,11 @@ func init() {
 	utils.InitClient()
 }
 func implEventByLogs(topics []string, decodedVData []byte, hash string, txIndex int) {
-	eventAbi := utils.EventAbi
-	session := db.SyncConn.NewSession()
-	defer session.Close()
-	err := session.Begin()
-	if err != nil {
-		log.Fatal(err.Error())
-		return
-	}
+	switchErc1155Event(topics, decodedVData, hash, txIndex)
+}
 
+func switchErc1155Event(topics []string, decodedVData []byte, hash string, txIndex int) {
+	eventAbi := utils.EventAbi
 	// 进行事件匹配
 	switch topics[0] {
 	//铸造事件 MintLog
@@ -31,7 +26,7 @@ func implEventByLogs(topics []string, decodedVData []byte, hash string, txIndex 
 			log.Fatal(err)
 		}
 		// 进行事件处理
-		events.UpdateMintTx(session, hash, intr, txIndex)
+		events.UpdateMintTx(hash, intr, txIndex)
 		break
 	// 交易事件 TransferLog
 	case "0x832711906223d7b1424466041e692f503b3467cdb4d5dbc5f746adfc531da26d":
@@ -41,13 +36,8 @@ func implEventByLogs(topics []string, decodedVData []byte, hash string, txIndex 
 		if err != nil {
 			log.Fatal(err)
 		}
-		var list []interface{}
-		for _, v := range intr {
-			list = append(list, v)
-		}
-
-		//打印监听到的参数
-		log.Info(list)
+		// 进行事件处理
+		events.UpdateTransferLogTx(hash, intr, txIndex)
 		break
 	// 销毁事件 BurnLog
 	case "0x3a9276528c9c1b7064f942560fe085b661a55400887092ba3bc7063d492d5545":
@@ -57,12 +47,8 @@ func implEventByLogs(topics []string, decodedVData []byte, hash string, txIndex 
 		if err != nil {
 			log.Fatal(err)
 		}
-		list := []interface{}{}
-		for _, v := range intr {
-			list = append(list, v)
-		}
-		//打印监听到的参数
-		log.Info(list)
+		// 进行事件处理
+		events.UpdateBurnLogTx(hash, intr, txIndex)
 		break
 	// 单体转账 TransferSingle
 	case "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62":
@@ -88,11 +74,10 @@ func implEventByLogs(topics []string, decodedVData []byte, hash string, txIndex 
 			log.Fatal(err)
 		}
 		var list []interface{}
-		list = append(list, events.GetIndexedAddress(topics[1]), events.GetIndexedAddress(topics[2]), events.GetIndexedAddress(topics[3]))
+		list = append(list, events.GetIndexedAddress(topics[2]), events.GetIndexedAddress(topics[3]))
 		for _, v := range intr {
 			list = append(list, v)
 		}
-
 		//打印监听到的参数
 		log.Info(list)
 		break

@@ -3,6 +3,7 @@ package blocks
 import (
 	"time"
 	"wallet-analysis/common/db"
+	"wallet-analysis/common/log"
 	"xorm.io/xorm"
 )
 
@@ -14,7 +15,7 @@ type ContractTx struct {
 	FromAddress   string        `xorm:"VARCHAR(255)"`
 	ToAddress     string        `xorm:"VARCHAR(255)"`
 	TokenId       string        `xorm:"VARCHAR(255)"`
-	Amount        string        `xorm:"DECIMAL(20,18)"`
+	Amount        string        `xorm:"not null default 0.00 decimal(40,18)"`
 	LogIndex      int           `xorm:"INT"`
 	TxNonce       int           `xorm:"INT"`
 	CreatedAt     time.Time     `xorm:"TIMESTAMP"`
@@ -39,6 +40,7 @@ func MakeContractTx(session *xorm.Session) (c *ContractTx) {
 }
 
 func (c *ContractTx) Insert(ctx *ContractTx) error {
+	log.Info(ctx)
 	_, err := c.Session.Insert(ctx)
 	if err != nil {
 		return err
@@ -80,12 +82,17 @@ func (c *ContractTx) GetTxByHashOrAddressOrHeight(query string, limit, start int
 // 根据 txhash\用户地址\tokenId获取交易
 func (c *ContractTx) GetTxByHashAndAddress(txHash, from, to string, tokenId, logIndex int64) (*ContractTx, error) {
 
-	var blockList = new(ContractTx)
-	_, err := db.SyncConn.Where("tx_hash=? and from_address=? and to_address=? and token_id=? and log_index =?",
-		txHash, from, to, tokenId, logIndex).Get(blockList)
+	blockList := ContractTx{}
+	isGet, err := db.SyncConn.Where("tx_hash=? and from_address=? and to_address=? and token_id=? and log_index =?",
+		txHash, from, to, tokenId, logIndex).Get(&blockList)
 	if err != nil {
 		return nil, err
 	}
-
-	return blockList, nil
+	if isGet {
+		log.Info("查询成功")
+		return &blockList, nil
+	} else {
+		log.Info("查询失败")
+		return nil, nil
+	}
 }

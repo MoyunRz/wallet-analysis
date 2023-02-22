@@ -54,7 +54,6 @@ func initDBConn(dbType, dbUrl string) (coin *xorm.Engine, err error) {
 func RollbackSession(session *xorm.Session, err error) {
 
 	if err != nil {
-
 		err1 := session.Rollback()
 		if err1 != nil {
 			log.Fatal(err1.Error())

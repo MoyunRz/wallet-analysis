@@ -11,10 +11,10 @@ import (
 	"wallet-analysis/models/blocks"
 	"wallet-analysis/service/abis"
 	"wallet-analysis/utils"
-	"xorm.io/xorm"
 )
 
 var contractAddress = ""
+var contractId = 0
 
 func init() {
 	blockCoin := new(blocks.BlockToken)
@@ -24,30 +24,71 @@ func init() {
 		return
 	}
 	contractAddress = token.ContractAddress
+	contractId = token.Id
 }
 
 func GetIndexedAddress(topics string) string {
 	return strings.Replace(topics, "0x000000000000000000000000", "0x", 1)
 }
 
-func Update1155Assets(account, contract string, tokenId int64) {
-	tokenAddress := common.HexToAddress(contract)
+func Update1155Assets(addrList []string, tokenAddress string, tokenId int64) {
+	contract := common.HexToAddress(tokenAddress)
 	//创建合约对象
-	xunWenGeToken, err := abis.NewXunWenGe(tokenAddress, utils.EthClient)
+	xunWenGeToken, err := abis.NewXunWenGe(contract, utils.EthClient)
 	if err != nil {
 		fmt.Println("newChttoken error", err)
 	}
-
-	bal, err := xunWenGeToken.BalanceOf(&bind.CallOpts{}, common.HexToAddress(account), big.NewInt(tokenId))
+	session := db.SyncConn.NewSession()
+	defer session.Close()
+	err = session.Begin()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
+		return
 	}
-	fmt.Printf("balance: %s\n", bal) // "wei: 74605500647408739782407023"
+	assets := blocks.MakeAssets(session)
+	tId := fmt.Sprintf("%d", tokenId)
+	isUp := false
+	for i := 0; i < len(addrList); i++ {
+		isUp = false
+		balance, err := xunWenGeToken.BalanceOf(&bind.CallOpts{}, common.HexToAddress(addrList[i]), big.NewInt(tokenId))
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Infof("Balance: %s,toBalance: %s\n", balance)
+
+		err = assets.GetAssets(contractId, tId, addrList[i])
+		if err != nil {
+			log.Error("查询资产失败")
+			log.Fatal(err.Error())
+			return
+		}
+		assets.ContractId = contractId
+		assets.Address = addrList[i]
+		assets.TokenId = tId
+		assets.TokenNums = balance.String()
+		if assets.Id == 0 {
+			err = assets.Insert()
+		} else {
+			err = assets.UpdateAssets()
+		}
+		db.RollbackSession(session, err)
+		isUp = true
+	}
+	if isUp {
+		db.RollbackSession(session, session.Commit())
+	}
 }
 
 // UpdateMintTx
 // 更新合约铸造交易
-func UpdateMintTx(session *xorm.Session, txHash string, intr []interface{}, txIndex int) {
+func UpdateMintTx(txHash string, intr []interface{}, txIndex int) {
+	session := db.SyncConn.NewSession()
+	defer session.Close()
+	err := session.Begin()
+	if err != nil {
+		log.Fatal(err.Error())
+		return
+	}
 	makeContractTx := blocks.MakeContractTx(session)
 	addrList := intr[0].([]common.Address)
 	tokenIds := intr[1].([]*big.Int)
@@ -56,9 +97,11 @@ func UpdateMintTx(session *xorm.Session, txHash string, intr []interface{}, txIn
 	datas := intr[3].(uint8)
 	// 合并相同交易组
 	txMap := mergingTx(addrList, tokenIds, amounts)
-
+	isUp := false
 	for addr, v := range txMap {
+		log.Info(addr, "铸造")
 		for tokenId, amount := range v {
+			log.Info("铸造", tokenId, amount)
 			tx, err := makeContractTx.GetTxByHashAndAddress(
 				txHash,
 				"0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -68,49 +111,180 @@ func UpdateMintTx(session *xorm.Session, txHash string, intr []interface{}, txIn
 			)
 			db.RollbackSession(session, err)
 			if tx == nil {
+				log.Info("Insert 铸造")
 				err = makeContractTx.Insert(&blocks.ContractTx{
 					TxHash:        txHash,
-					ContractId:    1,
+					ContractId:    contractId,
 					ContractEvent: "MintLog",
 					FromAddress:   "0x0000000000000000000000000000000000000000000000000000000000000000",
 					ToAddress:     addr,
 					TokenId:       fmt.Sprintf("%d", tokenId),
 					Amount:        fmt.Sprintf("%d", amount),
 					LogIndex:      txIndex,
-					ExtraData:     fmt.Sprintf("%s", datas),
+					ExtraData:     fmt.Sprintf("%x", datas),
 				})
 				db.RollbackSession(session, err)
+				isUp = true
 			}
 			// 更新用户资产
 			go func(addr string, tid int64) {
-				Update1155Assets(addr, contractAddress, tid)
+				Update1155Assets([]string{addr}, contractAddress, tid)
 			}(addr, tokenId)
 		}
+	}
+	if isUp {
+		// 交易提交
+		log.Info("交易提交")
+		db.RollbackSession(session, session.Commit())
+	}
+}
+
+// UpdateTransferLogTx
+// 更新合约单笔转账交易
+func UpdateTransferLogTx(txHash string, intr []interface{}, txIndex int) {
+	session := db.SyncConn.NewSession()
+	defer session.Close()
+	err := session.Begin()
+	if err != nil {
+		log.Fatal(err.Error())
+		return
+	}
+	from := intr[0].(common.Address)
+	addrList := intr[1].([]common.Address)
+	tokenIds := intr[2].([]*big.Int)
+	amounts := intr[3].([]*big.Int)
+	// txType := intr[3].(*big.Int)
+	datas := intr[4]
+
+	// 合并相同交易组
+	txMap := mergingTx(addrList, tokenIds, amounts)
+	makeContractTx := blocks.MakeContractTx(session)
+
+	isUp := false
+	for addr, v := range txMap {
+		for tokenId, amount := range v {
+			tx, err := makeContractTx.GetTxByHashAndAddress(
+				txHash,
+				from.String(),
+				addr,
+				tokenId,
+				int64(txIndex),
+			)
+			db.RollbackSession(session, err)
+			if tx == nil {
+				err = makeContractTx.Insert(&blocks.ContractTx{
+					TxHash:        txHash,
+					ContractId:    contractId,
+					ContractEvent: "TransferLog",
+					FromAddress:   from.String(),
+					ToAddress:     addr,
+					TokenId:       fmt.Sprintf("%d", tokenId),
+					Amount:        fmt.Sprintf("%d", amount),
+					LogIndex:      txIndex,
+					ExtraData:     fmt.Sprintf("%x", datas),
+				})
+				db.RollbackSession(session, err)
+				isUp = true
+			}
+			// 更新用户资产
+			go func(addr string, tid int64) {
+				Update1155Assets([]string{addr}, contractAddress, tid)
+			}(addr, tokenId)
+		}
+	}
+	if isUp {
+		db.RollbackSession(session, session.Commit())
+	}
+}
+
+// UpdateBurnLogTx
+// 更新合约单笔转账交易
+func UpdateBurnLogTx(txHash string, intr []interface{}, txIndex int) {
+
+	session := db.SyncConn.NewSession()
+	defer session.Close()
+	err := session.Begin()
+	if err != nil {
+		log.Fatal(err.Error())
+		return
+	}
+	from := intr[0].(common.Address)
+	tokenIds := intr[1].([]*big.Int)
+	amounts := intr[3].([]*big.Int)
+	// txType := intr[3].(*big.Int)
+
+	// 合并相同交易组
+	txMap := mergingTx([]common.Address{from}, tokenIds, amounts)
+	makeContractTx := blocks.MakeContractTx(session)
+
+	isUp := false
+	for addr, v := range txMap {
+		log.Info("销毁 token")
+		for tokenId, amount := range v {
+			tx, err := makeContractTx.GetTxByHashAndAddress(
+				txHash,
+				from.String(),
+				"0x0000000000000000000000000000000000000000000000000000000000000000",
+				tokenId,
+				int64(txIndex),
+			)
+			db.RollbackSession(session, err)
+			if tx == nil {
+				err = makeContractTx.Insert(&blocks.ContractTx{
+					TxHash:        txHash,
+					ContractId:    contractId,
+					ContractEvent: "BurnLog",
+					FromAddress:   from.String(),
+					ToAddress:     "0x0000000000000000000000000000000000000000000000000000000000000000",
+					TokenId:       fmt.Sprintf("%d", tokenId),
+					Amount:        fmt.Sprintf("%d", amount),
+					LogIndex:      txIndex,
+					ExtraData:     "",
+				})
+				db.RollbackSession(session, err)
+				isUp = true
+			}
+			// 更新用户资产
+			go func(addr string, tid int64) {
+				Update1155Assets([]string{addr}, contractAddress, tid)
+			}(addr, tokenId)
+		}
+	}
+	if isUp {
+		db.RollbackSession(session, session.Commit())
 	}
 }
 
 // UpdateTransferSingleTx
 // 更新合约单笔转账交易
-func UpdateTransferSingleTx(session *xorm.Session, txHash string, list []interface{}, txIndex int) {
+func UpdateTransferSingleTx(txHash string, intr []interface{}, txIndex int) {
+	session := db.SyncConn.NewSession()
+	defer session.Close()
+	err := session.Begin()
+	if err != nil {
+		log.Fatal(err.Error())
+		return
+	}
+	from := intr[1].(string)
+	to := intr[2].(string)
+	tokenId := intr[3].(*big.Int)
+	amount := intr[4].(*big.Int)
+	// 合并相同交易组
 	makeContractTx := blocks.MakeContractTx(session)
-	//sender := list[0].(string)
-	from := list[1].(string)
-	to := list[2].(string)
-	tokenId := list[3].(int)
-	amount := list[3].(int)
+
+	isUp := false
 	tx, err := makeContractTx.GetTxByHashAndAddress(
 		txHash,
 		from,
 		to,
-		int64(tokenId),
+		tokenId.Int64(),
 		int64(txIndex),
 	)
 	db.RollbackSession(session, err)
-
 	if tx == nil {
 		err = makeContractTx.Insert(&blocks.ContractTx{
 			TxHash:        txHash,
-			ContractId:    1,
+			ContractId:    contractId,
 			ContractEvent: "TransferSingle",
 			FromAddress:   from,
 			ToAddress:     to,
@@ -120,30 +294,88 @@ func UpdateTransferSingleTx(session *xorm.Session, txHash string, list []interfa
 			ExtraData:     "",
 		})
 		db.RollbackSession(session, err)
+		isUp = true
+	}
+	if isUp {
+		db.RollbackSession(session, session.Commit())
+	}
+	// 更新用户资产
+	go func(lst []string, tid int64) {
+		Update1155Assets(lst, contractAddress, tid)
+	}([]string{from, to}, tokenId.Int64())
+}
+
+// UpdateTransferBatchTx
+// 更新合约多笔转账交易
+func UpdateTransferBatchTx(txHash string, intr []interface{}, txIndex int) {
+	session := db.SyncConn.NewSession()
+	defer session.Close()
+	err := session.Begin()
+	if err != nil {
+		log.Fatal(err.Error())
+		return
+	}
+	from := intr[1].(string)
+	to := intr[2].(string)
+	tokenIds := intr[3].([]*big.Int)
+	amounts := intr[4].([]*big.Int)
+	makeContractTx := blocks.MakeContractTx(session)
+	isUp := false
+	for i := 0; i < len(tokenIds); i++ {
+		tx, err := makeContractTx.GetTxByHashAndAddress(
+			txHash,
+			from,
+			to,
+			tokenIds[i].Int64(),
+			int64(txIndex),
+		)
+		db.RollbackSession(session, err)
+		if tx == nil {
+			err = makeContractTx.Insert(&blocks.ContractTx{
+				TxHash:        txHash,
+				ContractId:    contractId,
+				ContractEvent: "TransferBatch",
+				FromAddress:   from,
+				ToAddress:     to,
+				TokenId:       fmt.Sprintf("%d", tokenIds[i]),
+				Amount:        fmt.Sprintf("%d", amounts[i]),
+				LogIndex:      txIndex,
+				ExtraData:     "",
+			})
+			db.RollbackSession(session, err)
+			isUp = true
+		}
+		if isUp {
+			db.RollbackSession(session, session.Commit())
+		}
+		// 更新用户资产
+		go func(lst []string, tid int64) {
+			Update1155Assets(lst, contractAddress, tid)
+		}([]string{from, to}, tokenIds[i].Int64())
 	}
 }
 
 func mergingTx(addrList []common.Address, tokenIds, amounts []*big.Int) map[string]map[int64]int64 {
-
 	txMap := map[string]map[int64]int64{}
-
+	log.Info("合并相同交易组")
 	// 合并相同交易组
 	for i := 0; i < len(addrList); i++ {
-		t := txMap[addrList[i].String()]
+		key := addrList[i].String()
+		t := txMap[key]
 		if t != nil {
 			tm := t[tokenIds[i].Int64()]
 			if tm != 0 {
 				tm += amounts[i].Int64()
 				var n = map[int64]int64{}
 				n[tokenIds[i].Int64()] = tm
-				txMap[addrList[i].String()] = n
+				txMap[key] = n
 			}
 		} else {
 			var n = map[int64]int64{}
 			n[tokenIds[i].Int64()] = amounts[i].Int64()
-			txMap[addrList[i].String()] = n
+			txMap[key] = n
 		}
 	}
-
+	log.Info("合并相同交易组 txMap", txMap)
 	return txMap
 }

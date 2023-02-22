@@ -13,8 +13,8 @@ type BlockTx struct {
 	ToAddress   string        `xorm:"VARCHAR(255)"`
 	BlockHeight int64         `xorm:"INT"`
 	BlockHash   string        `xorm:"VARCHAR(255)"`
-	Amount      string        `xorm:"DECIMAL(20,18)"`
-	Fee         string        `xorm:"DECIMAL(20,18)"`
+	Amount      string        `xorm:"not null default 0.00 decimal(40,18)"`
+	Fee         string        `xorm:"not null default 0.00 decimal(40,18)"`
 	TxStatus    string        `xorm:"VARCHAR(255)"`
 	TxTimestamp time.Time     `xorm:"TIMESTAMP"`
 	CreatedAt   time.Time     `xorm:"TIMESTAMP"`
@@ -90,9 +90,12 @@ func (b *BlockTx) GetTxByHashOrAddressOrHeight(query string, height, limit, star
 // 根据 txhash 或者 用户地址 或者 区块高度获取交易
 func (b *BlockTx) GetTxByHashAndAddress(txHash string, from, to string) (*BlockTx, error) {
 	blockTx := new(BlockTx)
-	_, err := db.SyncConn.Where("tx_hash=? and from_address=? and to_address=?", txHash, from, to).Get(blockTx)
+	isGet, err := db.SyncConn.Where("tx_hash=? and from_address=? and to_address=?", txHash, from, to).Get(blockTx)
 	if err != nil {
 		return nil, err
+	}
+	if !isGet {
+		return nil, nil
 	}
 	return blockTx, nil
 }
