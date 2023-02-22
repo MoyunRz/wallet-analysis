@@ -7,7 +7,7 @@ import (
 
 func main() {
 	var group = sync.WaitGroup{}
-	group.Add(1)
+	group.Add(2)
 	go func() {
 		defer group.Done()
 		service.ScanBlock()

@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"wallet-analysis/common/log"
 )
 
 func Test_api(t *testing.T) {
@@ -62,4 +63,14 @@ func Test_acli(t *testing.T) {
 	}
 
 	t.Log(receipt.Logs[0].Data, big.NewInt(0).SetBytes(d).String())
+}
+
+func TestClient(t *testing.T) {
+	cli, err := ethclient.Dial("ws://119.23.219.232:9944")
+	if err != nil {
+		log.Error("开始区块事件订阅失败，无法进行socket连接eth")
+		return
+	}
+	defer cli.Close()
+
 }

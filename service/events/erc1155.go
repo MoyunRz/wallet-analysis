@@ -17,6 +17,7 @@ var contractAddress = ""
 var contractId = 0
 
 func init() {
+
 	blockCoin := new(blocks.BlockToken)
 	token, err := blockCoin.GetToken("ERC1155")
 	if err != nil {
@@ -33,10 +34,19 @@ func GetIndexedAddress(topics string) string {
 
 func Update1155Assets(addrList []string, tokenAddress string, tokenId int64) {
 	contract := common.HexToAddress(tokenAddress)
-	//创建合约对象
-	xunWenGeToken, err := abis.NewXunWenGe(contract, utils.EthClient)
+	makeClient, err := utils.MakeClient()
 	if err != nil {
-		fmt.Println("newChttoken error", err)
+		log.Error("链接 eth socket error", err)
+		log.Fatal(err.Error())
+		return
+	}
+	defer makeClient.Close()
+	//创建合约对象
+	xunWenGeToken, err := abis.NewXunWenGe(contract, makeClient)
+	if err != nil {
+		log.Error("NewXunWenGe error", err)
+		log.Fatal(err.Error())
+		return
 	}
 	session := db.SyncConn.NewSession()
 	defer session.Close()

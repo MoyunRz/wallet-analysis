@@ -21,7 +21,7 @@ func StartSubscribe() {
 
 func XunWenGe1155Subscribe() {
 	cli, err := utils.MakeClient()
-	if err == nil {
+	if err != nil {
 		log.Error("开始区块事件订阅失败，无法进行socket连接eth")
 		return
 	}

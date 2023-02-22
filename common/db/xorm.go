@@ -45,7 +45,7 @@ func initDBConn(dbType, dbUrl string) (coin *xorm.Engine, err error) {
 	}
 	conn.SetMaxIdleConns(2)
 	conn.SetMaxOpenConns(6)
-	conn.SetConnMaxLifetime(60 * time.Second)
+	conn.SetConnMaxLifetime(100 * time.Second)
 	//conn.ShowSQL(true)
 	//conn.ShowExecTime(true)
 	return conn, nil

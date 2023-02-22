@@ -28,6 +28,7 @@ func InitClient() {
 		return
 	}
 }
+
 func MakeClient() (*ethclient.Client, error) {
 	ethClient, err := ethclient.Dial("ws://119.23.219.232:9944")
 	if err != nil {
@@ -35,7 +36,7 @@ func MakeClient() (*ethclient.Client, error) {
 		log.Fatal(err)
 		return nil, err
 	}
-	return ethClient, err
+	return ethClient, nil
 }
 
 // GetABI

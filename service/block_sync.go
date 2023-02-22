@@ -51,30 +51,22 @@ func ScanBlock() {
 			log.Fatal(err.Error())
 			return
 		}
-		var wg sync.WaitGroup
-		ch := make(chan struct{}, 12)
+
 		// 循环解析
 		for i := scanHeight; i < (lasterHeight - 12); i++ {
-			ch <- struct{}{}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				log.Info("扫描高度 ---> ", i)
-				// 根据区块高度获取区块
-				block, err := GetBlockByHeight(i)
-				if err != nil {
-					log.Fatal(err.Error())
-					return
-				}
-				// 处理区块内的交易
-				GetTxInfoByHash(block)
-				// 处理完成 写入数据库
-				writeBlockToDB(block)
-				time.Sleep(time.Duration(500))
-				<-ch
-			}()
+
+			log.Info("扫描高度 ---> ", i)
+			// 根据区块高度获取区块
+			block, err := GetBlockByHeight(i)
+			if err != nil {
+				log.Fatal(err.Error())
+				return
+			}
+			GetTxInfoByHash(block)
+			// 处理完成 写入数据库
+			writeBlockToDB(block)
 		}
-		wg.Wait()
+
 		endTime := time.Now().Unix()
 		newBlocks := (endTime - startTime) / 12
 		if newBlocks > 12 {
@@ -82,7 +74,8 @@ func ScanBlock() {
 		} else {
 			sleepTime = int(12 * (12 - newBlocks))
 		}
-		time.Sleep(time.Second * time.Duration(newBlocks))
+		log.Infof("线程休眠 %d s \n", sleepTime)
+		time.Sleep(time.Second * time.Duration(sleepTime))
 	}
 }
 
@@ -113,42 +106,55 @@ func GetTxInfoByHash(block *utils.Block) {
 	}
 	blockTx := blocks.MakeBlockTx(session)
 
+	var wg sync.WaitGroup
+	ch := make(chan struct{}, 6)
+
 	// 遍历解析交易
 	for i := 0; i < len(transactions); i++ {
-		receipt, err := Rpc.TransactionReceipt(transactions[i].Hash)
-		if err != nil {
-			log.Fatal(err.Error())
-			return
-		}
-		// 交易事件处理
-		EventHandle(receipt.Logs, receipt.TransactionHash)
-
-		// 插入数据库
-		trans, err := Rpc.TransactionByHash(transactions[i].Hash)
-		if err != nil {
-			log.Fatal(err.Error())
-			return
-		}
-		// 添加交易
-		btx, err := blockTx.GetTxByHashAndAddress(receipt.TransactionHash, receipt.From, receipt.To)
-		db.RollbackSession(session, err)
-		if btx == nil {
-			log.Info("添加ETH交易")
-			err = blockTx.Insert(&blocks.BlockTx{
-				TxHash:      receipt.TransactionHash,
-				FromAddress: receipt.From,
-				ToAddress:   receipt.To,
-				BlockHeight: block.Number.ToInt().Int64(),
-				BlockHash:   receipt.BlockHash,
-				Amount:      trans.Value.ToInt().String(),
-				Fee:         fmt.Sprintf("%d", int64(trans.Gas)),
-				TxStatus:    fmt.Sprintf("%d", int(receipt.Status)),
-				TxTimestamp: time.Unix(int64(block.Timestamp), 0),
-			})
+		wg.Add(1)
+		ch <- struct{}{}
+		go func(height int) {
+			// 处理区块内的交易
+			defer wg.Done()
+			receipt, err := Rpc.TransactionReceipt(transactions[height].Hash)
+			if err != nil {
+				log.Fatal(err.Error())
+				return
+			}
+			// 交易事件处理
+			EventHandle(receipt.Logs, receipt.TransactionHash)
+			// 插入数据库
+			trans, err := Rpc.TransactionByHash(transactions[height].Hash)
+			if err != nil {
+				log.Fatal(err.Error())
+				return
+			}
+			// 添加交易
+			btx, err := blockTx.GetTxByHashAndAddress(receipt.TransactionHash, receipt.From, receipt.To)
 			db.RollbackSession(session, err)
-		}
+			if btx == nil {
+				log.Info("添加ETH交易")
+				err = blockTx.Insert(&blocks.BlockTx{
+					TxHash:      receipt.TransactionHash,
+					FromAddress: receipt.From,
+					ToAddress:   receipt.To,
+					BlockHeight: block.Number.ToInt().Int64(),
+					BlockHash:   receipt.BlockHash,
+					Amount:      trans.Value.ToInt().String(),
+					Fee:         fmt.Sprintf("%d", int64(trans.Gas)),
+					TxStatus:    fmt.Sprintf("%d", int(receipt.Status)),
+					TxTimestamp: time.Unix(int64(block.Timestamp), 0),
+				})
+				db.RollbackSession(session, err)
+			}
+			log.Info("协程 Sleep 1 秒")
+			time.Sleep(time.Second)
+			<-ch
+		}(i)
 	}
+	wg.Wait()
 	db.RollbackSession(session, session.Commit())
+	time.Sleep(time.Second)
 }
 
 func EventHandle(vLog []*utils.Log, hash string) {
