@@ -67,9 +67,9 @@ func (b *BlockInfo) GetMaxHeight() error {
 	return nil
 }
 
-// GetTxByHash
+// GetBlockByHash
 // 根据 txhash 或者 用户地址 或者 区块高度获取交易
-func (b *BlockInfo) GetTxByHash(blockHash string) (bool, error) {
+func (b *BlockInfo) GetBlockByHash(blockHash string) (bool, error) {
 	isGet, err := db.SyncConn.Where("block_hash=?", blockHash).Get(b)
 
 	if err != nil {

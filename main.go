@@ -1,21 +1,29 @@
 package main
 
 import (
-	"sync"
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"wallet-analysis/common/conf"
+	"wallet-analysis/router"
 	"wallet-analysis/service"
 )
 
 func main() {
-	var group = sync.WaitGroup{}
-	group.Add(2)
 	go func() {
-		defer group.Done()
 		service.ScanBlock()
 	}()
 	go func() {
-		defer group.Done()
 		service.StartSubscribe()
 	}()
-	group.Wait()
+	r := gin.Default()
+	router.InitRouters(initHttp(r))
+	err := r.Run(fmt.Sprintf(":%d", conf.Cfg.ServerPort))
+	if err != nil {
+		return
+	}
+}
 
+func initHttp(defaultGin *gin.Engine) *gin.RouterGroup {
+	group := defaultGin.Group("eth")
+	return group
 }

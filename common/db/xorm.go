@@ -43,9 +43,10 @@ func initDBConn(dbType, dbUrl string) (coin *xorm.Engine, err error) {
 	if err := conn.Ping(); err != nil {
 		return nil, err
 	}
-	conn.SetMaxIdleConns(2)
-	conn.SetMaxOpenConns(6)
+	conn.SetMaxIdleConns(10)
+	conn.SetMaxOpenConns(10)
 	conn.SetConnMaxLifetime(100 * time.Second)
+	conn.TZLocation, _ = time.LoadLocation("Asia/Shanghai")
 	//conn.ShowSQL(true)
 	//conn.ShowExecTime(true)
 	return conn, nil

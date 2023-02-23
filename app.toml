@@ -1,3 +1,4 @@
+serverPort = 8080
 mode = "test"
 #host = "http://124.71.12.16:9933"
 host = "http://119.23.219.232:9933"

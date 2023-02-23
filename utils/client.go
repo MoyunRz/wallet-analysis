@@ -15,7 +15,7 @@ type Block struct {
 	Difficulty   hexutil.Big    `json:"difficulty"`
 	GasLimit     hexutil.Big    `json:"gasLimit"`
 	GasUsed      hexutil.Big    `json:"gasUsed"`
-	Timestamp    hexutil.Uint64 `json:"timestamp"`
+	Timestamp    hexutil.Big    `json:"timestamp"`
 	Transactions []*Transaction `json:"transactions"`
 }
 

@@ -19,6 +19,7 @@ func init() {
 }
 
 type Config struct {
+	ServerPort    int64          `toml:"serverPort"`
 	Mode          string         `toml:"mode"`
 	Host          string         `toml:"host"`
 	ChainId       int            `toml:"chainId"`

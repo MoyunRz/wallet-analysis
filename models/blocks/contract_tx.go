@@ -71,7 +71,7 @@ func (c *ContractTx) GetTxByHashOrAddressOrHeight(query string, limit, start int
 	if err != nil {
 		return 0, nil, err
 	}
-	err = querySql.Limit(limit, start).Find(&blockList)
+	err = querySql.Limit(limit, start).Desc("id").Find(&blockList)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -88,11 +88,8 @@ func (c *ContractTx) GetTxByHashAndAddress(txHash, from, to string, tokenId, log
 	if err != nil {
 		return nil, err
 	}
-	if isGet {
-		log.Info("查询成功")
-		return &blockList, nil
-	} else {
-		log.Info("查询失败")
+	if !isGet {
 		return nil, nil
 	}
+	return &blockList, nil
 }

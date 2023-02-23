@@ -22,14 +22,14 @@ func init() {
 
 func ScanBlock() {
 	// 计算间隔休眠时间
-	// 设12秒一个块
+	// 设6秒一个块
 	// (结束的时间 - 处理的开始时间)/12 = 出块的个数
 	// 出块的个数 > 12 则不休眠
 	// 出块的个数 < 12 则：(12 - 出块的个数) * 12 = 休眠时间
 	sleepTime := 1
 
 	for {
-		scanHeight := int64(0)
+		scanHeight := int64(1)
 		blockInfo := blocks.MakeBlockInfo(nil)
 		startTime := time.Now().Unix()
 		// 获取数据库的区块高度
@@ -42,20 +42,18 @@ func ScanBlock() {
 				log.Fatal(err.Error())
 				return
 			}
-			log.Info("根据数据库高度来扫描 高度 ===> ", blockInfo.Height)
-			scanHeight = blockInfo.Height
+			if blockInfo.Height != 0 {
+				scanHeight = blockInfo.Height
+			}
+			log.Info("根据数据库高度来扫描 高度 ===> ", scanHeight)
 		}
 
-		lasterHeight, err := Rpc.BlockNumber()
-		if err != nil {
-			log.Fatal(err.Error())
-			return
-		}
+		endHeight := getNewHeight()
 
 		// 循环解析
-		for i := scanHeight; i < (lasterHeight - 12); i++ {
+		for i := scanHeight; i < (endHeight - 12); i++ {
 
-			log.Info("扫描高度 ---> ", i)
+			log.Infof("当前扫描高度:%d,最新高度:%d", i, getNewHeight())
 			// 根据区块高度获取区块
 			block, err := GetBlockByHeight(i)
 			if err != nil {
@@ -77,6 +75,15 @@ func ScanBlock() {
 		log.Infof("线程休眠 %d s \n", sleepTime)
 		time.Sleep(time.Second * time.Duration(sleepTime))
 	}
+}
+
+func getNewHeight() int64 {
+	newHeight, err := Rpc.BlockNumber()
+	if err != nil {
+		log.Fatal(err.Error())
+		return 0
+	}
+	return newHeight
 }
 
 // GetBlockByHeight
@@ -107,7 +114,6 @@ func GetTxInfoByHash(block *utils.Block) {
 	blockTx := blocks.MakeBlockTx(session)
 	var wg sync.WaitGroup
 	ch := make(chan struct{}, 6)
-
 	// 遍历解析交易
 	for i := 0; i < len(transactions); i++ {
 		wg.Add(1)
@@ -142,7 +148,7 @@ func GetTxInfoByHash(block *utils.Block) {
 					Amount:      trans.Value.ToInt().String(),
 					Fee:         fmt.Sprintf("%d", int64(trans.Gas)),
 					TxStatus:    fmt.Sprintf("%d", int(receipt.Status)),
-					TxTimestamp: time.Unix(int64(block.Timestamp), 0),
+					TxTimestamp: time.Unix(block.Timestamp.ToInt().Int64(), 0),
 				})
 				db.RollbackSession(session, err)
 			}
@@ -153,7 +159,7 @@ func GetTxInfoByHash(block *utils.Block) {
 	}
 	wg.Wait()
 	db.RollbackSession(session, session.Commit())
-	time.Sleep(time.Second)
+	time.Sleep(time.Duration(500))
 }
 
 func EventHandle(vLog []*utils.Log, hash string) {
@@ -194,11 +200,13 @@ func writeBlockToDB(block *utils.Block) {
 	}
 
 	blockInfo := blocks.MakeBlockInfo(session)
-	isGet, err := blockInfo.GetTxByHash(block.Hash)
+	isGet, err := blockInfo.GetBlockByHash(block.Hash)
 	if err != nil {
 		log.Fatal(err.Error())
 		return
 	}
+
+	blockTimestamp := time.Unix(block.Timestamp.ToInt().Int64(), 0)
 	blockInfo.BlockStatus = 1
 	blockInfo.BlockHash = block.Hash
 	blockInfo.Height = block.Number.ToInt().Int64()
@@ -206,7 +214,7 @@ func writeBlockToDB(block *utils.Block) {
 	blockInfo.ReceiptsRoot = block.ReceiptsRoot
 	blockInfo.StateRoot = block.StateRoot
 	blockInfo.ParentHash = block.ParentHash
-	blockInfo.BlockTimestamp = time.Unix(int64(block.Timestamp), 0)
+	blockInfo.BlockTimestamp = blockTimestamp
 	blockInfo.Transactions = len(block.Transactions)
 	if isGet {
 		err = blockInfo.UpdateBlockInfo()
@@ -214,7 +222,5 @@ func writeBlockToDB(block *utils.Block) {
 		err = blockInfo.Insert()
 	}
 	db.RollbackSession(session, err)
-	// add Commit() after all actions
-	err = session.Commit()
-	db.RollbackSession(session, err)
+	db.RollbackSession(session, session.Commit())
 }

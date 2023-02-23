@@ -64,7 +64,7 @@ func Update1155Assets(addrList []string, tokenAddress string, tokenId int64) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Infof("Balance: %s,toBalance: %s\n", balance)
+		log.Infof("Balance: %s\n", balance)
 
 		err = assets.GetAssets(contractId, tId, addrList[i])
 		if err != nil {
@@ -220,7 +220,7 @@ func UpdateBurnLogTx(txHash string, intr []interface{}, txIndex int) {
 	}
 	from := intr[0].(common.Address)
 	tokenIds := intr[1].([]*big.Int)
-	amounts := intr[3].([]*big.Int)
+	amounts := intr[2].([]*big.Int)
 	// txType := intr[3].(*big.Int)
 
 	// 合并相同交易组

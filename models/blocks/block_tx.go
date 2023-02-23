@@ -71,15 +71,15 @@ func (b *BlockTx) GetTxByHash(query string) ([]BlockTx, error) {
 
 // GetTxByHashOrAddressOrHeight
 // 根据 txhash 或者 用户地址 或者 区块高度获取交易
-func (b *BlockTx) GetTxByHashOrAddressOrHeight(query string, height, limit, start int) (int64, []BlockTx, error) {
+func (b *BlockTx) GetTxByHashOrAddressOrHeight(query string, limit, start int) (int64, []BlockTx, error) {
 
 	blockList := make([]BlockTx, 0)
-	querySql := db.SyncConn.Where("tx_hash=? or block_hash=? or from_address=? or to_address=? or block_height =?", query, query, query, query, height)
+	querySql := db.SyncConn.Where("tx_hash=? or block_hash=? or from_address=? or to_address=? or block_height =?", query, query, query, query, query)
 	total, err := querySql.Count(b)
 	if err != nil {
 		return 0, nil, err
 	}
-	err = querySql.Limit(limit, start).Find(&blockList)
+	err = querySql.Limit(limit, start).Desc("block_height").Find(&blockList)
 	if err != nil {
 		return 0, nil, err
 	}
