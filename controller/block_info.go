@@ -8,10 +8,11 @@ import (
 	"wallet-analysis/models/responses"
 )
 
-func resultOk(c *gin.Context) {
+func resultOk(c *gin.Context, res interface{}) {
 	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK,
-		"msg":  "success",
+		"code":   http.StatusOK,
+		"msg":    "success",
+		"result": res,
 	})
 }
 
@@ -34,29 +35,42 @@ func resultError(c *gin.Context, code int, msg string) {
 // 根据区块Hash查询区块
 func QueryBlockByHash(c *gin.Context) {
 	var p requests.BlockQuery
-	if c.ShouldBindQuery(&p) != nil {
+	if c.ShouldBindJSON(&p) != nil {
 		resultError(c, 400, "参数错误")
 		return
 	}
 	makeBlockInfo := blocks.MakeBlockInfo(nil)
-	hash, err := makeBlockInfo.GetBlockByHash(p.BlockHash)
+	isGet, err := makeBlockInfo.GetBlockByHash(p.BlockHash)
 	if err != nil {
 		resultError(c, 500, "查询出错,请稍后再试")
 		return
 	}
-
-	if hash {
+	if !isGet {
 		// 查询成功
-
+		resultOk(c, nil)
+		return
 	}
 
+	resultOk(c, responses.BlockInfo{
+		Id:             makeBlockInfo.Id,
+		Height:         makeBlockInfo.Height,
+		BlockHash:      makeBlockInfo.BlockHash,
+		Miner:          makeBlockInfo.Miner,
+		ParentHash:     makeBlockInfo.ParentHash,
+		ReceiptsRoot:   makeBlockInfo.ReceiptsRoot,
+		StateRoot:      makeBlockInfo.StateRoot,
+		BlockStatus:    makeBlockInfo.BlockStatus,
+		BlockTimestamp: makeBlockInfo.BlockTimestamp,
+		Transactions:   makeBlockInfo.Transactions,
+	})
+	return
 }
 
 // QueryBlockTxByHash
 // 根据交易Hash查询交易详情
 func QueryBlockTxByHash(c *gin.Context) {
 	var p requests.TxQuery
-	if c.ShouldBindQuery(&p) != nil {
+	if c.ShouldBindJSON(&p) != nil {
 		resultError(c, 400, "参数错误")
 		return
 	}
@@ -124,7 +138,7 @@ func QueryBlockTxByHash(c *gin.Context) {
 // 根据交易Hash查询合约交易详情
 func QueryContractTxByHash(c *gin.Context) {
 	var p requests.TxQuery
-	if c.ShouldBindQuery(&p) != nil {
+	if c.ShouldBindJSON(&p) != nil {
 		resultError(c, 400, "参数错误")
 		return
 	}
@@ -167,10 +181,64 @@ func QueryContractTxByHash(c *gin.Context) {
 // FindUserAssetToken
 // 获取用户的资产Token
 func FindUserAssetToken(c *gin.Context) {
-	var p requests.TxQuery
-	if c.ShouldBindQuery(&p) != nil {
+	var p requests.AssertsQuery
+	if c.ShouldBindJSON(&p) != nil {
 		resultError(c, 400, "参数错误")
 		return
 	}
+	// 根据from 地址查询余额
+	makeAssets := blocks.MakeAssets(nil)
+	allTokens, err := makeAssets.FindAllTokenByAddress(p.Address, p.ContractAddress)
+	if err != nil {
+		resultError(c, 500, "查询错误")
+		return
+	}
+	assetList := make([]responses.UserAsset, 0)
+	for i := 0; i < len(allTokens); i++ {
+		assetList = append(assetList, responses.UserAsset{
+			Address:         allTokens[i].Address,
+			ContractAddress: p.ContractAddress,
+			TokenId:         allTokens[i].TokenId,
+			TokenNums:       allTokens[i].TokenNums,
+			TokenUrl:        allTokens[i].TokenUrl,
+		})
+	}
+	resultMapOk(c, map[string]interface{}{
+		"list":  assetList,
+		"total": len(assetList),
+	})
+	return
+}
 
+// FindUserAssetContract
+// 获取用户的所有合约
+func FindUserAssetContract(c *gin.Context) {
+	var p requests.AssertsQuery
+	if c.ShouldBindJSON(&p) != nil {
+		resultError(c, 400, "参数错误")
+		return
+	}
+	// 根据from 地址查询余额
+	makeAssets := blocks.MakeBlockToken(nil)
+	allTokens, err := makeAssets.FindAllContractByAddress(p.Address)
+	if err != nil {
+		resultError(c, 500, "查询错误")
+		return
+	}
+	tokenList := make([]responses.ContractToken, 0)
+
+	for i := 0; i < len(allTokens); i++ {
+		tokenList = append(tokenList, responses.ContractToken{
+			Id:               allTokens[i].Id,
+			ContractAddress:  p.ContractAddress,
+			ContractName:     allTokens[i].ContractAddress,
+			ContractFullName: allTokens[i].ContractName,
+			ContractType:     allTokens[i].ContractFullName,
+		})
+	}
+	resultMapOk(c, map[string]interface{}{
+		"list":  tokenList,
+		"total": len(tokenList),
+	})
+	return
 }

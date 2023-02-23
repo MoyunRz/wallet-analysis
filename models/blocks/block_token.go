@@ -57,3 +57,17 @@ func (b *BlockToken) GetToken(tokenType string) (*BlockToken, error) {
 	}
 	return blockToken, nil
 }
+
+func (b *BlockToken) FindAllContractByAddress(addr string) ([]BlockToken, error) {
+	blockTokens := make([]BlockToken, 0)
+	err := db.SyncConn.Table("account_assets").
+		Select("block_token.*").
+		Join("LEFT OUTER", "block_token", "block_token.id = account_assets.contract_id").
+		Where("account_assets.address =?", addr).
+		GroupBy("block_token.contract_address").
+		Find(&blockTokens)
+	if err != nil {
+		return nil, err
+	}
+	return blockTokens, nil
+}

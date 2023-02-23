@@ -20,6 +20,9 @@ func StartSubscribe() {
 }
 
 func XunWenGe1155Subscribe() {
+
+	logs := make(chan types.Log)
+
 	cli, err := utils.MakeClient()
 	if err != nil {
 		log.Error("开始区块事件订阅失败，无法进行socket连接eth")
@@ -38,17 +41,27 @@ func XunWenGe1155Subscribe() {
 	query := ethereum.FilterQuery{
 		Addresses: []common.Address{contractAddress},
 	}
-	logs := make(chan types.Log)
 	sub, err := cli.SubscribeFilterLogs(context.Background(), query, logs)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
+
 	// 循环监听订阅的通道数据
 	for {
 		select {
-		case err := <-sub.Err():
-			log.Fatal(err)
+		case err = <-sub.Err():
+			log.Error(err.Error())
+			cli.Close()
+			// 再次尝试重连
+			if cli, err = utils.MakeClient(); err != nil {
+				log.Fatal(err)
+				return
+			}
+			if sub, err = cli.SubscribeFilterLogs(context.Background(), query, logs); err != nil {
+				log.Fatal(err)
+				return
+			}
 		case vLog := <-logs:
 			log.Infof("订阅事件 交易hash: %s", vLog.TxHash.String())
 			var topics []string

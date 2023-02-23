@@ -8,8 +8,14 @@ type BlockQuery struct {
 	PageNum   int    `json:"page_num" form:"page_num"`
 	PageSize  int    `json:"page_size" form:"page_size"`
 }
+
 type TxQuery struct {
 	Query    string `json:"query" form:"query"`
 	PageNum  int    `json:"page_num" form:"page_num"`
 	PageSize int    `json:"page_size" form:"page_size"`
+}
+
+type AssertsQuery struct {
+	Address         string `json:"address" form:"address"`
+	ContractAddress string `json:"contract_address" form:"contract_address"`
 }

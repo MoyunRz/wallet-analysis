@@ -64,8 +64,11 @@ func Update1155Assets(addrList []string, tokenAddress string, tokenId int64) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		imageUrl, err := xunWenGeToken.Uri(&bind.CallOpts{}, big.NewInt(tokenId))
+		if err != nil {
+			log.Fatal(err)
+		}
 		log.Infof("Balance: %s\n", balance)
-
 		err = assets.GetAssets(contractId, tId, addrList[i])
 		if err != nil {
 			log.Error("查询资产失败")
@@ -76,6 +79,7 @@ func Update1155Assets(addrList []string, tokenAddress string, tokenId int64) {
 		assets.Address = addrList[i]
 		assets.TokenId = tId
 		assets.TokenNums = balance.String()
+		assets.TokenUrl = imageUrl
 		if assets.Id == 0 {
 			err = assets.Insert()
 		} else {
@@ -367,25 +371,27 @@ func UpdateTransferBatchTx(txHash string, intr []interface{}, txIndex int) {
 
 func mergingTx(addrList []common.Address, tokenIds, amounts []*big.Int) map[string]map[int64]int64 {
 	txMap := map[string]map[int64]int64{}
-	log.Info("合并相同交易组")
-	// 合并相同交易组
+	log.Info("合并前交易 ===> ", addrList, tokenIds, amounts)
+	// 合并相同交易组 map: address->token->amount
 	for i := 0; i < len(addrList); i++ {
-		key := addrList[i].String()
-		t := txMap[key]
-		if t != nil {
-			tm := t[tokenIds[i].Int64()]
-			if tm != 0 {
-				tm += amounts[i].Int64()
-				var n = map[int64]int64{}
-				n[tokenIds[i].Int64()] = tm
-				txMap[key] = n
+		addrKey := addrList[i].String()
+		tokenKey := tokenIds[i].Int64()
+		// 缓存新值
+		buffValue := int64(0)
+		// 判断又没这个key
+		if txMap[addrKey] != nil {
+			if txMap[addrKey][tokenKey] != 0 {
+				buffValue = txMap[addrKey][tokenKey] + amounts[i].Int64()
+			} else {
+				buffValue = amounts[i].Int64()
 			}
+			txMap[addrKey][tokenKey] = buffValue
 		} else {
-			var n = map[int64]int64{}
-			n[tokenIds[i].Int64()] = amounts[i].Int64()
-			txMap[key] = n
+			txMap[addrKey] = map[int64]int64{
+				tokenKey: amounts[i].Int64(),
+			}
 		}
 	}
-	log.Info("合并相同交易组 txMap", txMap)
+	log.Info("交易合并结果 ===> ", txMap)
 	return txMap
 }

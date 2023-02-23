@@ -53,18 +53,19 @@ func ScanBlock() {
 		// 循环解析
 		for i := scanHeight; i < (endHeight - 12); i++ {
 
-			log.Infof("当前扫描高度:%d,最新高度:%d", i, getNewHeight())
+			log.Infof("当前扫描高度:%d,截止扫描的高度:%d", i, endHeight-12)
 			// 根据区块高度获取区块
 			block, err := GetBlockByHeight(i)
 			if err != nil {
 				log.Fatal(err.Error())
 				return
 			}
-			GetTxInfoByHash(block)
+			if len(block.Transactions) != 0 {
+				GetTxInfoByHash(block)
+			}
 			// 处理完成 写入数据库
 			writeBlockToDB(block)
 		}
-
 		endTime := time.Now().Unix()
 		newBlocks := (endTime - startTime) / 12
 		if newBlocks > 12 {
@@ -177,18 +178,6 @@ func EventHandle(vLog []*utils.Log, hash string) {
 	}
 }
 
-func ForwarderInputData(methodName string, res map[string]interface{}) {
-	v := res["req"].(struct {
-		From  common.Address "json:\"from\""
-		To    common.Address "json:\"to\""
-		Value *big.Int       "json:\"value\""
-		Gas   *big.Int       "json:\"gas\""
-		Nonce *big.Int       "json:\"nonce\""
-		Data  []uint8        "json:\"data\""
-	})
-	fmt.Printf("解析 input 结果:%x \n", v.Data)
-}
-
 func writeBlockToDB(block *utils.Block) {
 
 	session := db.SyncConn.NewSession()
@@ -223,4 +212,16 @@ func writeBlockToDB(block *utils.Block) {
 	}
 	db.RollbackSession(session, err)
 	db.RollbackSession(session, session.Commit())
+}
+
+func ForwarderInputData(methodName string, res map[string]interface{}) {
+	v := res["req"].(struct {
+		From  common.Address "json:\"from\""
+		To    common.Address "json:\"to\""
+		Value *big.Int       "json:\"value\""
+		Gas   *big.Int       "json:\"gas\""
+		Nonce *big.Int       "json:\"nonce\""
+		Data  []uint8        "json:\"data\""
+	})
+	fmt.Printf("解析 input 结果:%x \n", v.Data)
 }

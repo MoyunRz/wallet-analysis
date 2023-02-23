@@ -12,7 +12,8 @@ import (
 )
 
 func init() {
-	err := InitSyncDB2(conf.Cfg.DataBase)
+
+	err := InitSyncDB2(conf.UseDataBase)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -43,9 +44,9 @@ func initDBConn(dbType, dbUrl string) (coin *xorm.Engine, err error) {
 	if err := conn.Ping(); err != nil {
 		return nil, err
 	}
-	conn.SetMaxIdleConns(10)
+	conn.SetMaxIdleConns(30)
 	conn.SetMaxOpenConns(10)
-	conn.SetConnMaxLifetime(100 * time.Second)
+	conn.SetConnMaxLifetime(10 * time.Minute)
 	conn.TZLocation, _ = time.LoadLocation("Asia/Shanghai")
 	//conn.ShowSQL(true)
 	//conn.ShowExecTime(true)

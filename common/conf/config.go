@@ -11,6 +11,8 @@ var defConfFile = "app.toml"
 const ABI1155 = "erc1155.abi"
 const ForwarderAbi = "forwarder.abi"
 
+var UseDataBase = DatabaseConfig{}
+
 func init() {
 	err := LoadConfig(defConfFile, Cfg)
 	if err != nil {
@@ -19,14 +21,14 @@ func init() {
 }
 
 type Config struct {
-	ServerPort    int64          `toml:"serverPort"`
-	Mode          string         `toml:"mode"`
-	Host          string         `toml:"host"`
-	ChainId       int            `toml:"chainId"`
-	StartHeight   int64          `toml:"startHeight"`
-	IsReStartScan bool           `toml:"isReStartScan"`
-	Log           LogConfig      `toml:"log"`
-	DataBase      DatabaseConfig `toml:"database"`
+	ServerPort    int64                     `toml:"serverPort"`
+	Mode          string                    `toml:"mode"`
+	Host          string                    `toml:"host"`
+	ChainId       int                       `toml:"chainId"`
+	StartHeight   int64                     `toml:"startHeight"`
+	IsReStartScan bool                      `toml:"isReStartScan"`
+	Log           LogConfig                 `toml:"log"`
+	DataBase      map[string]DatabaseConfig `toml:"database"`
 }
 
 type LogConfig struct {
@@ -57,5 +59,6 @@ func LoadConfig(cfgPath string, cfg *Config) error {
 	if _, err := toml.DecodeFile(cfgPath, cfg); err != nil {
 		return err
 	}
+	UseDataBase = cfg.DataBase[cfg.Mode]
 	return nil
 }
