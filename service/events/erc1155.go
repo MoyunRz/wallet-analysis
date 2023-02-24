@@ -59,6 +59,9 @@ func Update1155Assets(addrList []string, tokenAddress string, tokenId int64) {
 	tId := fmt.Sprintf("%d", tokenId)
 	isUp := false
 	for i := 0; i < len(addrList); i++ {
+		if !common.IsHexAddress(addrList[i]) || strings.Contains(addrList[i], "0x0000000000000000000000000000000000000000") {
+			continue
+		}
 		isUp = false
 		balance, err := xunWenGeToken.BalanceOf(&bind.CallOpts{}, common.HexToAddress(addrList[i]), big.NewInt(tokenId))
 		if err != nil {
@@ -118,7 +121,7 @@ func UpdateMintTx(txHash string, intr []interface{}, txIndex int) {
 			log.Info("铸造", tokenId, amount)
 			tx, err := makeContractTx.GetTxByHashAndAddress(
 				txHash,
-				"0x0000000000000000000000000000000000000000000000000000000000000000",
+				"0x0000000000000000000000000000000000000000",
 				addr,
 				tokenId,
 				int64(txIndex),
@@ -130,7 +133,7 @@ func UpdateMintTx(txHash string, intr []interface{}, txIndex int) {
 					TxHash:        txHash,
 					ContractId:    contractId,
 					ContractEvent: "MintLog",
-					FromAddress:   "0x0000000000000000000000000000000000000000000000000000000000000000",
+					FromAddress:   "0x0000000000000000000000000000000000000000",
 					ToAddress:     addr,
 					TokenId:       fmt.Sprintf("%d", tokenId),
 					Amount:        fmt.Sprintf("%d", amount),
@@ -226,7 +229,6 @@ func UpdateBurnLogTx(txHash string, intr []interface{}, txIndex int) {
 	tokenIds := intr[1].([]*big.Int)
 	amounts := intr[2].([]*big.Int)
 	// txType := intr[3].(*big.Int)
-
 	// 合并相同交易组
 	txMap := mergingTx([]common.Address{from}, tokenIds, amounts)
 	makeContractTx := blocks.MakeContractTx(session)
@@ -238,7 +240,7 @@ func UpdateBurnLogTx(txHash string, intr []interface{}, txIndex int) {
 			tx, err := makeContractTx.GetTxByHashAndAddress(
 				txHash,
 				from.String(),
-				"0x0000000000000000000000000000000000000000000000000000000000000000",
+				"0x0000000000000000000000000000000000000000",
 				tokenId,
 				int64(txIndex),
 			)
@@ -249,7 +251,7 @@ func UpdateBurnLogTx(txHash string, intr []interface{}, txIndex int) {
 					ContractId:    contractId,
 					ContractEvent: "BurnLog",
 					FromAddress:   from.String(),
-					ToAddress:     "0x0000000000000000000000000000000000000000000000000000000000000000",
+					ToAddress:     "0x0000000000000000000000000000000000000000",
 					TokenId:       fmt.Sprintf("%d", tokenId),
 					Amount:        fmt.Sprintf("%d", amount),
 					LogIndex:      txIndex,
@@ -329,10 +331,10 @@ func UpdateTransferBatchTx(txHash string, intr []interface{}, txIndex int) {
 		log.Fatal(err.Error())
 		return
 	}
-	from := intr[1].(string)
-	to := intr[2].(string)
-	tokenIds := intr[3].([]*big.Int)
-	amounts := intr[4].([]*big.Int)
+	from := intr[0].(string)
+	to := intr[1].(string)
+	tokenIds := intr[2].([]*big.Int)
+	amounts := intr[3].([]*big.Int)
 	makeContractTx := blocks.MakeContractTx(session)
 	isUp := false
 	for i := 0; i < len(tokenIds); i++ {

@@ -89,7 +89,7 @@ func (a *AccountAssets) FindAllTokenByAddress(addr, contract string) ([]response
 		Table("account_assets").
 		Select("block_token.contract_name as token_name,account_assets.*").
 		Join("LEFT OUTER", "block_token", "block_token.id = account_assets.contract_id").
-		Where("account_assets.address =? and block_token.contract_address =?", addr, contract).
+		Where("account_assets.contract_id != ? and account_assets.address =? and block_token.contract_address =?", 0, addr, contract).
 		Find(&assets)
 	if err != nil {
 		return assets, err

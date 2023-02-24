@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"wallet-analysis/common/conf"
 	"wallet-analysis/common/log"
 
 	"golang.org/x/net/context"
@@ -126,7 +127,7 @@ func (rpc *RpcClient) call(method string, params ...interface{}) (json.RawMessag
 		params = []interface{}{}
 	}
 	request := request{
-		ID:      "42",
+		ID:      fmt.Sprintf("%d", conf.Cfg.ChainId),
 		JSONRPC: "2.0",
 		Method:  method,
 		Params:  params,

@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/shopspring/decimal"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 	"wallet-analysis/common/conf"
@@ -28,35 +29,31 @@ func ScanBlock() {
 	// 出块的个数 > 12 则不休眠
 	// 出块的个数 < 12 则：(12 - 出块的个数) * 12 = 休眠时间
 	sleepTime := 1
-
-	for {
-		scanHeight := int64(1)
-		blockInfo := blocks.MakeBlockInfo(nil)
-		startTime := time.Now().Unix()
-		// 获取数据库的区块高度
-		if conf.Cfg.IsReStartScan {
-			log.Info("根据配置文件高度来扫描 高度 ===> ", conf.Cfg.StartHeight)
-			scanHeight = conf.Cfg.StartHeight
-		} else {
-			err := blockInfo.GetMaxHeight()
-			if err != nil {
-				log.Fatal(err.Error())
-				return
-			}
-			if blockInfo.Height != 0 {
-				scanHeight = blockInfo.Height
-			}
-			log.Info("根据数据库高度来扫描 高度 ===> ", scanHeight)
+	scanHeight := int64(1)
+	blockInfo := blocks.MakeBlockInfo(nil)
+	// 获取数据库的区块高度
+	if conf.Cfg.IsReStartScan {
+		log.Info("根据配置文件高度来扫描 高度 ===> ", conf.Cfg.StartHeight)
+		scanHeight = conf.Cfg.StartHeight
+	} else {
+		err := blockInfo.GetMaxHeight()
+		if err != nil {
+			log.Fatal(err.Error())
+			return
 		}
-
+		if blockInfo.Height != 0 {
+			scanHeight = blockInfo.Height
+		}
+		log.Info("根据数据库高度来扫描 高度 ===> ", scanHeight)
+	}
+	for {
 		endHeight := getNewHeight()
-
 		// 循环解析
-		for i := scanHeight; i < (endHeight - 12); i++ {
+		for ; scanHeight < (endHeight - 12); scanHeight++ {
 
-			log.Infof("当前扫描高度:%d,截止扫描的高度:%d", i, endHeight-12)
+			log.Infof("当前扫描高度:%d,截止扫描的高度:%d", scanHeight, endHeight-12)
 			// 根据区块高度获取区块
-			block, err := GetBlockByHeight(i)
+			block, err := GetBlockByHeight(scanHeight)
 			if err != nil {
 				log.Fatal(err.Error())
 				return
@@ -67,14 +64,13 @@ func ScanBlock() {
 			// 处理完成 写入数据库
 			writeBlockToDB(block)
 		}
-		endTime := time.Now().Unix()
-		newBlocks := (endTime - startTime) / 12
-		if newBlocks > 12 {
-			sleepTime = 1
+		newBlocks := getNewHeight() - scanHeight
+		if newBlocks >= 12 {
+			sleepTime = 12
 		} else {
-			sleepTime = int(12 * (12 - newBlocks))
+			sleepTime = int(4 * (12 - newBlocks))
 		}
-		log.Infof("线程休眠 %d s \n", sleepTime)
+		log.Info("休眠计算：", newBlocks)
 		time.Sleep(time.Second * time.Duration(sleepTime))
 	}
 }
@@ -156,8 +152,8 @@ func GetTxInfoByHash(block *utils.Block) {
 				db.RollbackSession(session, err)
 				UpdateETHAssets([]string{receipt.From, receipt.To})
 			}
-			log.Info("协程 Sleep 1 秒")
-			time.Sleep(time.Second)
+			log.Info("协程 Sleep 0.5 秒")
+			time.Sleep(time.Duration(500))
 			<-ch
 		}(i)
 	}
@@ -228,6 +224,9 @@ func UpdateETHAssets(addrList []string) {
 	assets := blocks.MakeAssets(session)
 	isUp := false
 	for i := 0; i < len(addrList); i++ {
+		if !common.IsHexAddress(addrList[i]) || strings.Contains(addrList[i], "0x0000000000000000000000000000000000000000") {
+			continue
+		}
 		isUp = false
 		balance, err := GetEthBalance(addrList[i])
 		if err != nil {

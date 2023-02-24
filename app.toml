@@ -1,10 +1,10 @@
 serverPort = 8080
-mode = "test"
+mode = "server"
 #host = "http://124.71.12.16:9933"
 host = "http://119.23.219.232:9933"
 #chainId = 9090
 chainId = 42
-startHeight = 95203
+startHeight = 172420
 isReStartScan= false
 
 [database.local]
@@ -19,9 +19,9 @@ password= "123456"
 type= "mysql"
 mode= "release"
 name= "eth_blockchain"
-url= "192.168.0.88:3306"
+url= "69.231.190.96:3306"
 user= "root"
-password= "jlw999000"
+password= "ZJ8z2aWKzlPY"
 
 [database.server]
 type= "mysql"
@@ -36,3 +36,4 @@ level = "info"
 formatter = ""
 outfile = "logs/info.log"
 errfile = "logs/err.log"
+sqlfile = "logs/sql.log"

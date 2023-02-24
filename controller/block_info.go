@@ -154,7 +154,7 @@ func QueryContractTxByHash(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	resultMapOk(c, map[string]interface{}{
+	resultOk(c, map[string]interface{}{
 		"list":  cTxList,
 		"total": total,
 	})

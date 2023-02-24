@@ -3,12 +3,15 @@ package db
 import (
 	"errors"
 	"fmt"
+	"os"
 	"time"
 	"wallet-analysis/common/conf"
 	"wallet-analysis/common/log"
+	"xorm.io/xorm/caches"
 
 	_ "github.com/go-sql-driver/mysql"
 	"xorm.io/xorm"
+	xlog "xorm.io/xorm/log"
 )
 
 func init() {
@@ -36,6 +39,8 @@ func initDBConn(dbType, dbUrl string) (coin *xorm.Engine, err error) {
 	if dbUrl == "" || dbType == "" {
 		return nil, errors.New("empty databases config")
 	}
+
+	cacher := caches.NewLRUCacher2(caches.NewMemoryStore(), time.Minute, 100000)
 	conn, err := xorm.NewEngine(dbType, dbUrl)
 	if err != nil {
 		return nil, err
@@ -44,10 +49,19 @@ func initDBConn(dbType, dbUrl string) (coin *xorm.Engine, err error) {
 	if err := conn.Ping(); err != nil {
 		return nil, err
 	}
+
+	conn.SetDefaultCacher(cacher)
 	conn.SetMaxIdleConns(30)
-	conn.SetMaxOpenConns(10)
-	conn.SetConnMaxLifetime(10 * time.Minute)
+	conn.SetMaxOpenConns(15)
+	conn.SetConnMaxLifetime(1 * time.Minute)
 	conn.TZLocation, _ = time.LoadLocation("Asia/Shanghai")
+	f, err := os.Create(conf.Cfg.Log.Sqlfile)
+	if err != nil {
+		println(err.Error())
+		return
+	}
+	conn.ShowSQL(true)
+	conn.SetLogger(xlog.NewSimpleLogger(f))
 	//conn.ShowSQL(true)
 	//conn.ShowExecTime(true)
 	return conn, nil

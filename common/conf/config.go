@@ -36,6 +36,7 @@ type LogConfig struct {
 	Formatter string `toml:"formatter"   json:"formatter"`
 	OutFile   string `toml:"outfile"    json:"outfile"`
 	ErrFile   string `toml:"errfile"    json:"errfile"`
+	Sqlfile   string `toml:"sqlfile"    json:"sqlfile"`
 }
 
 type DatabaseConfig struct {
