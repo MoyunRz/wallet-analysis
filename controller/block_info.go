@@ -6,6 +6,7 @@ import (
 	"wallet-analysis/models/blocks"
 	"wallet-analysis/models/requests"
 	"wallet-analysis/models/responses"
+	"wallet-analysis/service"
 )
 
 func resultOk(c *gin.Context, res interface{}) {
@@ -82,7 +83,7 @@ func QueryBlockTxByHash(c *gin.Context) {
 	}
 	makeBlockTx := blocks.MakeBlockTx(nil)
 	makeContractTx := blocks.MakeContractTx(nil)
-	txResponseList := make([]responses.TxResponse, 0)
+	txResponseList := responses.TxResponse{}
 
 	// 获取普通交易
 	total, blockTxList, err := makeBlockTx.GetTxByHashOrAddressOrHeight(p.Query, p.PageSize, p.PageNum)
@@ -92,8 +93,7 @@ func QueryBlockTxByHash(c *gin.Context) {
 	}
 
 	for i := 0; i < len(blockTxList); i++ {
-		txResponse := responses.TxResponse{}
-		txResponse.Transaction = responses.ETHTransaction{
+		txResponseList.Transaction = append(txResponseList.Transaction, responses.ETHTransaction{
 			Id:          blockTxList[i].Id,
 			TxHash:      blockTxList[i].TxHash,
 			FromAddress: blockTxList[i].FromAddress,
@@ -104,14 +104,14 @@ func QueryBlockTxByHash(c *gin.Context) {
 			Fee:         blockTxList[i].Fee,
 			TxStatus:    blockTxList[i].TxStatus,
 			TxTimestamp: blockTxList[i].TxTimestamp,
-		}
+		})
 		// 	获取合约交易
 		cTxList, err := makeContractTx.GetTxByHash(blockTxList[i].TxHash)
 		if err != nil {
 			return
 		}
 		for j := 0; j < len(cTxList); j++ {
-			txResponse.ContractTransaction = append(txResponse.ContractTransaction, responses.ContractInfo{
+			txResponseList.ContractTransaction = append(txResponseList.ContractTransaction, responses.ContractInfo{
 				Id:            cTxList[j].Id,
 				TxHash:        cTxList[j].TxHash,
 				ContractId:    cTxList[j].ContractId,
@@ -125,11 +125,10 @@ func QueryBlockTxByHash(c *gin.Context) {
 				ExtraData:     cTxList[j].ExtraData,
 			})
 		}
-		txResponseList = append(txResponseList, txResponse)
 	}
 	resultMapOk(c, map[string]interface{}{
-		"list":  txResponseList,
-		"total": total,
+		"transactions": txResponseList,
+		"total":        total,
 	})
 	return
 }
@@ -155,24 +154,8 @@ func QueryContractTxByHash(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	contractList := make([]responses.ContractInfo, 0)
-	for j := 0; j < len(cTxList); j++ {
-		contractList = append(contractList, responses.ContractInfo{
-			Id:            cTxList[j].Id,
-			TxHash:        cTxList[j].TxHash,
-			ContractId:    cTxList[j].ContractId,
-			ContractEvent: cTxList[j].ContractEvent,
-			FromAddress:   cTxList[j].FromAddress,
-			ToAddress:     cTxList[j].ToAddress,
-			TokenId:       cTxList[j].TokenId,
-			Amount:        cTxList[j].Amount,
-			LogIndex:      cTxList[j].LogIndex,
-			TxNonce:       cTxList[j].TxNonce,
-			ExtraData:     cTxList[j].ExtraData,
-		})
-	}
 	resultMapOk(c, map[string]interface{}{
-		"list":  contractList,
+		"list":  cTxList,
 		"total": total,
 	})
 	return
@@ -182,31 +165,44 @@ func QueryContractTxByHash(c *gin.Context) {
 // 获取用户的资产Token
 func FindUserAssetToken(c *gin.Context) {
 	var p requests.AssertsQuery
-	if c.ShouldBindJSON(&p) != nil {
+	err := c.ShouldBindJSON(&p)
+
+	if err != nil {
 		resultError(c, 400, "参数错误")
 		return
 	}
+	allTokens := make([]responses.UserAsset, 0)
 	// 根据from 地址查询余额
 	makeAssets := blocks.MakeAssets(nil)
-	allTokens, err := makeAssets.FindAllTokenByAddress(p.Address, p.ContractAddress)
+	allTokens, err = makeAssets.FindAllTokenByAddress(p.Address, p.ContractAddress)
 	if err != nil {
 		resultError(c, 500, "查询错误")
 		return
 	}
-	assetList := make([]responses.UserAsset, 0)
-	for i := 0; i < len(allTokens); i++ {
-		assetList = append(assetList, responses.UserAsset{
-			Address:         allTokens[i].Address,
-			ContractAddress: p.ContractAddress,
-			TokenId:         allTokens[i].TokenId,
-			TokenNums:       allTokens[i].TokenNums,
-			TokenUrl:        allTokens[i].TokenUrl,
-		})
-	}
 	resultMapOk(c, map[string]interface{}{
-		"list":  assetList,
-		"total": len(assetList),
+		"list":  allTokens,
+		"total": len(allTokens),
 	})
+	return
+}
+
+// FindUserAssetEth
+// 获取用户的资产Token
+func FindUserAssetEth(c *gin.Context) {
+	var p requests.AssertsQuery
+	err := c.ShouldBindJSON(&p)
+
+	if err != nil {
+		resultError(c, 400, "参数错误")
+		return
+	}
+	// 根据from 地址查询Eth余额
+	balance, err := service.GetEthBalance(p.Address)
+	if err != nil {
+		resultError(c, 500, "查询错误")
+		return
+	}
+	resultOk(c, balance)
 	return
 }
 

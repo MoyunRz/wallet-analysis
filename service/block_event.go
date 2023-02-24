@@ -63,7 +63,7 @@ func switchErc1155Event(topics []string, decodedVData []byte, hash string, txInd
 			list = append(list, v)
 		}
 		//打印监听到的参数
-		log.Info(list)
+		events.UpdateTransferLogTx(hash, list, txIndex)
 		break
 	// a->b 批量转账 TransferBatch
 	case "0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb":
@@ -79,6 +79,7 @@ func switchErc1155Event(topics []string, decodedVData []byte, hash string, txInd
 			list = append(list, v)
 		}
 		//打印监听到的参数
+		events.UpdateTransferBatchTx(hash, list, txIndex)
 		log.Info(list)
 		break
 	}

@@ -35,6 +35,7 @@ type UserAsset struct {
 	Address         string `json:"address"`
 	ContractAddress string `json:"contract_address"`
 	TokenId         string `json:"token_id"`
+	TokenName       string `json:"token_name"`
 	TokenNums       string `json:"token_nums"`
 	TokenUrl        string `json:"token_url"`
 }
@@ -48,8 +49,8 @@ type ContractToken struct {
 }
 
 type TxResponse struct {
-	Transaction         ETHTransaction `json:"transaction"`
-	ContractTransaction []ContractInfo `json:"contract_transaction"`
+	Transaction         []ETHTransaction `json:"eth_transaction"`
+	ContractTransaction []ContractInfo   `json:"contract_transaction"`
 }
 
 type BlockInfo struct {

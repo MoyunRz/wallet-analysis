@@ -3,6 +3,7 @@ package blocks
 import (
 	"time"
 	"wallet-analysis/common/db"
+	"wallet-analysis/models/responses"
 	"xorm.io/xorm"
 )
 
@@ -12,7 +13,7 @@ type AccountAssets struct {
 	Address    string        `xorm:"VARCHAR(255)"`
 	TokenId    string        `xorm:"VARCHAR(255)"`
 	TokenUrl   string        `xorm:"VARCHAR(255)"`
-	TokenNums  string        `xorm:"not null default 0.00 decimal(40,18)"`
+	TokenNums  string        `xorm:"VARCHAR(255)"`
 	CreatedAt  time.Time     `xorm:"TIMESTAMP"`
 	UpdatedAt  time.Time     `xorm:"TIMESTAMP"`
 	DeletedAt  time.Time     `xorm:"TIMESTAMP"`
@@ -35,8 +36,8 @@ func MakeAssets(session *xorm.Session) (a *AccountAssets) {
 
 // Insert
 // 插入
-func (a *AccountAssets) Insert() error {
-	_, err := a.Session.Insert(a)
+func (a *AccountAssets) Insert(accountAssets *AccountAssets) error {
+	_, err := a.Session.Insert(accountAssets)
 	if err != nil {
 		return err
 	}
@@ -45,8 +46,8 @@ func (a *AccountAssets) Insert() error {
 
 // UpdateAssets
 // 更新用户资产
-func (a *AccountAssets) UpdateAssets() error {
-	_, err := a.Session.Where("id=? ", a.Id).Update(a)
+func (a *AccountAssets) UpdateAssets(accountAssets *AccountAssets) error {
+	_, err := a.Session.Where("id=? ", a.Id).Update(accountAssets)
 
 	if err != nil {
 		return err
@@ -54,12 +55,22 @@ func (a *AccountAssets) UpdateAssets() error {
 	return nil
 }
 
-func (a *AccountAssets) GetAssets(cid int, tokenId, address string) error {
-	_, err := db.SyncConn.Where("contract_id=? and token_id=? and address =?", cid, tokenId, address).Get(a)
+func (a *AccountAssets) GetAssets(cid int, tokenId, address string) (*AccountAssets, error) {
+	accountAssets := new(AccountAssets)
+	_, err := db.SyncConn.Where("contract_id=? and token_id=? and address =?", cid, tokenId, address).Get(accountAssets)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return accountAssets, nil
+}
+
+func (a *AccountAssets) GetAssetsByAddr(address string) (*AccountAssets, error) {
+	accountAssets := new(AccountAssets)
+	_, err := db.SyncConn.Where("address =? and contract_id = 0", address).Get(accountAssets)
+	if err != nil {
+		return nil, err
+	}
+	return accountAssets, nil
 }
 
 func (a *AccountAssets) GetAccountAllAssets() ([]AccountAssets, error) {
@@ -71,11 +82,12 @@ func (a *AccountAssets) GetAccountAllAssets() ([]AccountAssets, error) {
 	return assets, nil
 }
 
-func (a *AccountAssets) FindAllTokenByAddress(addr, contract string) ([]AccountAssets, error) {
-	assets := make([]AccountAssets, 0)
+func (a *AccountAssets) FindAllTokenByAddress(addr, contract string) ([]responses.UserAsset, error) {
+	assets := make([]responses.UserAsset, 0)
 
 	err := db.SyncConn.
 		Table("account_assets").
+		Select("block_token.contract_name as token_name,account_assets.*").
 		Join("LEFT OUTER", "block_token", "block_token.id = account_assets.contract_id").
 		Where("account_assets.address =? and block_token.contract_address =?", addr, contract).
 		Find(&assets)

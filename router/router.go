@@ -26,4 +26,6 @@ func blockGroup(group *gin.RouterGroup) {
 	g.POST("userAssetToken", controller.FindUserAssetToken)
 	// 获取用户的所有合约
 	g.POST("userAssetContract", controller.FindUserAssetContract)
+	// 获取用户的所有合约
+	g.POST("userAssetEth", controller.FindUserAssetEth)
 }

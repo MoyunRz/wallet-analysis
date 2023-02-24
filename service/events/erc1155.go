@@ -69,21 +69,21 @@ func Update1155Assets(addrList []string, tokenAddress string, tokenId int64) {
 			log.Fatal(err)
 		}
 		log.Infof("Balance: %s\n", balance)
-		err = assets.GetAssets(contractId, tId, addrList[i])
+		asset, err := assets.GetAssets(contractId, tId, addrList[i])
 		if err != nil {
 			log.Error("查询资产失败")
 			log.Fatal(err.Error())
 			return
 		}
-		assets.ContractId = contractId
-		assets.Address = addrList[i]
-		assets.TokenId = tId
-		assets.TokenNums = balance.String()
-		assets.TokenUrl = imageUrl
-		if assets.Id == 0 {
-			err = assets.Insert()
+		asset.ContractId = contractId
+		asset.Address = addrList[i]
+		asset.TokenId = tId
+		asset.TokenNums = balance.String()
+		asset.TokenUrl = imageUrl
+		if asset.Id == 0 {
+			err = assets.Insert(asset)
 		} else {
-			err = assets.UpdateAssets()
+			err = assets.UpdateAssets(asset)
 		}
 		db.RollbackSession(session, err)
 		isUp = true

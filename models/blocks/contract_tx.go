@@ -4,6 +4,7 @@ import (
 	"time"
 	"wallet-analysis/common/db"
 	"wallet-analysis/common/log"
+	"wallet-analysis/models/responses"
 	"xorm.io/xorm"
 )
 
@@ -15,7 +16,7 @@ type ContractTx struct {
 	FromAddress   string        `xorm:"VARCHAR(255)"`
 	ToAddress     string        `xorm:"VARCHAR(255)"`
 	TokenId       string        `xorm:"VARCHAR(255)"`
-	Amount        string        `xorm:"not null default 0.00 decimal(40,18)"`
+	Amount        string        `xorm:"VARCHAR(255)"`
 	LogIndex      int           `xorm:"INT"`
 	TxNonce       int           `xorm:"INT"`
 	CreatedAt     time.Time     `xorm:"TIMESTAMP"`
@@ -63,15 +64,14 @@ func (c *ContractTx) GetTxByHash(query string) ([]ContractTx, error) {
 
 // GetTxByHashOrAddressOrHeight
 // 根据 txhash 或者 用户地址 或者 区块高度获取交易
-func (c *ContractTx) GetTxByHashOrAddressOrHeight(query string, limit, start int) (int64, []ContractTx, error) {
+func (c *ContractTx) GetTxByHashOrAddressOrHeight(query string, start, limit int) (int64, []responses.ContractInfo, error) {
 
-	blockList := make([]ContractTx, 0)
-	querySql := db.SyncConn.Where("tx_hash=? or from_address=? or to_address=?", query, query, query)
-	total, err := querySql.Count(c)
+	blockList := make([]responses.ContractInfo, 0)
+	total, err := db.SyncConn.Where("tx_hash=? or from_address=? or to_address=?", query, query, query).Count(c)
 	if err != nil {
 		return 0, nil, err
 	}
-	err = querySql.Limit(limit, start).Desc("id").Find(&blockList)
+	err = db.SyncConn.Table(c.TableName()).Where("tx_hash=? or from_address=? or to_address=?", query, query, query).Limit(limit, start).Desc("id").Find(&blockList)
 	if err != nil {
 		return 0, nil, err
 	}

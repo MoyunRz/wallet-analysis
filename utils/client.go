@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/shopspring/decimal"
 )
 
 type Block struct {
@@ -68,6 +69,20 @@ type Log struct {
 	Data        string         `json:"data"`
 	BlockNumber hexutil.Uint64 `json:"blockNumber"`
 	LogIndex    hexutil.Uint   `json:"logIndex"`
+}
+
+func (rpc *RpcClient) EthBalanceByAddress(addr string) (decimal.Decimal, error) {
+	var result string
+	err := rpc.CallNoAuth("eth_getBalance", &result, addr, "latest")
+	if err != nil {
+		return decimal.Decimal{}, err
+	}
+	decodeBig, err := hexutil.DecodeBig(result)
+	if err != nil {
+		return decimal.Decimal{}, err
+	}
+	fromString := decimal.NewFromBigInt(decodeBig, 18)
+	return fromString, err
 }
 
 func (rpc *RpcClient) TransactionReceipt(txhash string) (*TransactionReceipt, error) {

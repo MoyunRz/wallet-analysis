@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/shopspring/decimal"
 	"math/big"
 	"sync"
 	"time"
@@ -139,6 +140,7 @@ func GetTxInfoByHash(block *utils.Block) {
 			btx, err := blockTx.GetTxByHashAndAddress(receipt.TransactionHash, receipt.From, receipt.To)
 			db.RollbackSession(session, err)
 			if btx == nil {
+
 				log.Info("添加ETH交易")
 				err = blockTx.Insert(&blocks.BlockTx{
 					TxHash:      receipt.TransactionHash,
@@ -152,6 +154,7 @@ func GetTxInfoByHash(block *utils.Block) {
 					TxTimestamp: time.Unix(block.Timestamp.ToInt().Int64(), 0),
 				})
 				db.RollbackSession(session, err)
+				UpdateETHAssets([]string{receipt.From, receipt.To})
 			}
 			log.Info("协程 Sleep 1 秒")
 			time.Sleep(time.Second)
@@ -212,6 +215,50 @@ func writeBlockToDB(block *utils.Block) {
 	}
 	db.RollbackSession(session, err)
 	db.RollbackSession(session, session.Commit())
+}
+
+func UpdateETHAssets(addrList []string) {
+	session := db.SyncConn.NewSession()
+	defer session.Close()
+	err := session.Begin()
+	if err != nil {
+		log.Fatal(err.Error())
+		return
+	}
+	assets := blocks.MakeAssets(session)
+	isUp := false
+	for i := 0; i < len(addrList); i++ {
+		isUp = false
+		balance, err := GetEthBalance(addrList[i])
+		if err != nil {
+			log.Error("查询资产失败")
+			log.Fatal(err.Error())
+			return
+		}
+		asset, err := assets.GetAssetsByAddr(addrList[i])
+		if err != nil {
+			log.Error("查询资产失败")
+			log.Fatal(err.Error())
+			return
+		}
+		asset.Address = addrList[i]
+		asset.ContractId = 0
+		asset.TokenNums = balance.String()
+		if asset.Id == 0 {
+			err = assets.Insert(asset)
+		} else {
+			err = assets.UpdateAssets(asset)
+		}
+		db.RollbackSession(session, err)
+		isUp = true
+	}
+	if isUp {
+		db.RollbackSession(session, session.Commit())
+	}
+}
+
+func GetEthBalance(addr string) (decimal.Decimal, error) {
+	return Rpc.EthBalanceByAddress(addr)
 }
 
 func ForwarderInputData(methodName string, res map[string]interface{}) {
