@@ -16,6 +16,13 @@ import (
 var contractAddress = ""
 var contractId = 0
 
+type TopicsEvent struct {
+	TxHash  string
+	Intr    []interface{}
+	TxIndex int
+	Topics  []string
+}
+
 func init() {
 
 	blockCoin := new(blocks.BlockToken)
@@ -98,7 +105,8 @@ func Update1155Assets(addrList []string, tokenAddress string, tokenId int64) {
 
 // UpdateMintTx
 // 更新合约铸造交易
-func UpdateMintTx(txHash string, intr []interface{}, txIndex int) {
+func UpdateMintTx(topicsEvent TopicsEvent) {
+	log.Info("铸造事件 event MintLog")
 	session := db.SyncConn.NewSession()
 	defer session.Close()
 	err := session.Begin()
@@ -106,6 +114,9 @@ func UpdateMintTx(txHash string, intr []interface{}, txIndex int) {
 		log.Fatal(err.Error())
 		return
 	}
+	intr := topicsEvent.Intr
+	txHash := topicsEvent.TxHash
+	txIndex := topicsEvent.TxIndex
 	makeContractTx := blocks.MakeContractTx(session)
 	addrList := intr[0].([]common.Address)
 	tokenIds := intr[1].([]*big.Int)
@@ -158,7 +169,8 @@ func UpdateMintTx(txHash string, intr []interface{}, txIndex int) {
 
 // UpdateTransferLogTx
 // 更新合约单笔转账交易
-func UpdateTransferLogTx(txHash string, intr []interface{}, txIndex int) {
+func UpdateTransferLogTx(topicsEvent TopicsEvent) {
+	log.Info("交易事件 event TransferLog")
 	session := db.SyncConn.NewSession()
 	defer session.Close()
 	err := session.Begin()
@@ -166,6 +178,9 @@ func UpdateTransferLogTx(txHash string, intr []interface{}, txIndex int) {
 		log.Fatal(err.Error())
 		return
 	}
+	txHash := topicsEvent.TxHash
+	txIndex := topicsEvent.TxIndex
+	intr := topicsEvent.Intr
 	from := intr[0].(common.Address)
 	addrList := intr[1].([]common.Address)
 	tokenIds := intr[2].([]*big.Int)
@@ -216,8 +231,8 @@ func UpdateTransferLogTx(txHash string, intr []interface{}, txIndex int) {
 
 // UpdateBurnLogTx
 // 更新合约单笔转账交易
-func UpdateBurnLogTx(txHash string, intr []interface{}, txIndex int) {
-
+func UpdateBurnLogTx(topicsEvent TopicsEvent) {
+	log.Info("销毁事件 event BurnLog")
 	session := db.SyncConn.NewSession()
 	defer session.Close()
 	err := session.Begin()
@@ -225,6 +240,10 @@ func UpdateBurnLogTx(txHash string, intr []interface{}, txIndex int) {
 		log.Fatal(err.Error())
 		return
 	}
+	intr := topicsEvent.Intr
+	txHash := topicsEvent.TxHash
+	txIndex := topicsEvent.TxIndex
+
 	from := intr[0].(common.Address)
 	tokenIds := intr[1].([]*big.Int)
 	amounts := intr[2].([]*big.Int)
@@ -273,7 +292,8 @@ func UpdateBurnLogTx(txHash string, intr []interface{}, txIndex int) {
 
 // UpdateTransferSingleTx
 // 更新合约单笔转账交易
-func UpdateTransferSingleTx(txHash string, intr []interface{}, txIndex int) {
+func UpdateTransferSingleTx(topicsEvent TopicsEvent) {
+	log.Info("批量转账 event TransferSingle ")
 	session := db.SyncConn.NewSession()
 	defer session.Close()
 	err := session.Begin()
@@ -281,6 +301,13 @@ func UpdateTransferSingleTx(txHash string, intr []interface{}, txIndex int) {
 		log.Fatal(err.Error())
 		return
 	}
+
+	txHash := topicsEvent.TxHash
+	txIndex := topicsEvent.TxIndex
+	topics := topicsEvent.Topics
+	var list []interface{}
+	list = append(list, GetIndexedAddress(topics[1]), GetIndexedAddress(topics[2]), GetIndexedAddress(topics[3]))
+	intr := append(list, topicsEvent.Intr...)
 	from := intr[1].(string)
 	to := intr[2].(string)
 	tokenId := intr[3].(*big.Int)
@@ -323,7 +350,8 @@ func UpdateTransferSingleTx(txHash string, intr []interface{}, txIndex int) {
 
 // UpdateTransferBatchTx
 // 更新合约多笔转账交易
-func UpdateTransferBatchTx(txHash string, intr []interface{}, txIndex int) {
+func UpdateTransferBatchTx(topicsEvent TopicsEvent) {
+	log.Info("批量转账 event TransferBatch ")
 	session := db.SyncConn.NewSession()
 	defer session.Close()
 	err := session.Begin()
@@ -331,6 +359,14 @@ func UpdateTransferBatchTx(txHash string, intr []interface{}, txIndex int) {
 		log.Fatal(err.Error())
 		return
 	}
+
+	txHash := topicsEvent.TxHash
+	txIndex := topicsEvent.TxIndex
+	topics := topicsEvent.Topics
+	var list []interface{}
+	list = append(list, GetIndexedAddress(topics[2]), GetIndexedAddress(topics[3]))
+	intr := append(list, topicsEvent.Intr...)
+
 	from := intr[0].(string)
 	to := intr[1].(string)
 	tokenIds := intr[2].([]*big.Int)

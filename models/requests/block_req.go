@@ -14,6 +14,9 @@ type TxQuery struct {
 	PageNum  int    `json:"page_num" form:"page_num"`
 	PageSize int    `json:"page_size" form:"page_size"`
 }
+type TxHash struct {
+	Hash string `json:"hash" form:"hash"`
+}
 
 type AssertsQuery struct {
 	Address         string `json:"address" form:"address"`
