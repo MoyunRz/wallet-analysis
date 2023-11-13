@@ -24,6 +24,16 @@ func init() {
 
 var SyncConn *xorm.Engine
 
+func ConnDB() *xorm.Engine {
+	if SyncConn == nil {
+		err := InitSyncDB2(conf.UseDataBase)
+		if err != nil {
+			panic(err.Error())
+		}
+	}
+	return SyncConn
+}
+
 // InitSyncDB2 连接数据库
 func InitSyncDB2(cfg conf.DatabaseConfig) error {
 	dburl := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=true", cfg.User, cfg.PassWord, cfg.Url, cfg.Name)

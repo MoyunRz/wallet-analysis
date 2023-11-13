@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -68,7 +70,20 @@ func XunWenGe1155Subscribe() {
 			for i := 0; i < len(vLog.Topics); i++ {
 				topics = append(topics, vLog.Topics[i].String())
 			}
-			implEventByLogs(topics, vLog.Data, vLog.TxHash.String(), int(vLog.Index))
+			jsonData, err := json.Marshal(topics)
+			if err != nil {
+				fmt.Println("转换为JSON时出错:", err)
+				return
+			}
+			makeBlockLogs := blocks.MakeBlockEvents(nil)
+			makeBlockLogs.Address = vLog.Address.String()
+			makeBlockLogs.BlockNumber = int(vLog.BlockNumber)
+			makeBlockLogs.BlockHash = vLog.BlockHash.String()
+			makeBlockLogs.LogIndex = int(vLog.Index)
+			makeBlockLogs.Topics = string(jsonData)
+			makeBlockLogs.Data = string(vLog.Data[:2])
+			//这步是对监听到的DATA数据进行解析
+			implEventByLogs(makeBlockLogs)
 		}
 	}
 }

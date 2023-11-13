@@ -98,10 +98,8 @@ func (rpc *RpcClient) TransactionByHash(txhash string) (*Transaction, error) {
 	return &result, err
 }
 
-func (rpc *RpcClient) GetCode(address string) (bool, error) {
-	var getCode string
-
-	err := rpc.CallNoAuth("eth_getCode", &getCode, address, "latest")
+func (rpc *RpcClient) isContract(address string) (bool, error) {
+	getCode, err := rpc.GetCode(address)
 	if err != nil {
 		fmt.Println("错误:", err)
 	}
@@ -111,4 +109,13 @@ func (rpc *RpcClient) GetCode(address string) (bool, error) {
 	} else {
 		return true, nil
 	}
+}
+
+func (rpc *RpcClient) GetCode(address string) (string, error) {
+	var getCode string
+	err := rpc.CallNoAuth("eth_getCode", &getCode, address, "latest")
+	if err != nil {
+		fmt.Println("错误:", err)
+	}
+	return getCode, nil
 }

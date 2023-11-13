@@ -1,7 +1,7 @@
 package service
 
 import (
-	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/shopspring/decimal"
@@ -46,11 +46,12 @@ func ScanBlock() {
 		}
 		log.Info("根据数据库高度来扫描 高度 ===> ", scanHeight)
 	}
+
 	for {
 		endHeight := getNewHeight()
+		scanNum := endHeight - 12
 		// 循环解析
-		for ; scanHeight < (endHeight - 12); scanHeight++ {
-
+		for ; scanHeight < scanNum; scanHeight++ {
 			log.Infof("当前扫描高度:%d,截止扫描的高度:%d", scanHeight, endHeight-12)
 			// 根据区块高度获取区块
 			block, err := GetBlockByHeight(scanHeight)
@@ -125,7 +126,7 @@ func GetTxInfoByHash(block *utils.Block) {
 				return
 			}
 			// 交易事件处理
-			EventHandle(receipt.Logs, receipt.TransactionHash)
+			EventHandle(receipt)
 			// 插入数据库
 			trans, err := Rpc.TransactionByHash(transactions[height].Hash)
 			if err != nil {
@@ -162,18 +163,24 @@ func GetTxInfoByHash(block *utils.Block) {
 	time.Sleep(time.Duration(500))
 }
 
-func EventHandle(vLog []*utils.Log, hash string) {
-	fmt.Println("扫链 交易hash", hash)
-	for j := 0; j < len(vLog); j++ {
-		vlog := vLog[j]
-		//这步是对监听到的DATA数据进行解析
-		decodedVData, err := hex.DecodeString(vlog.Data[2:])
+func EventHandle(receipts *utils.TransactionReceipt) {
+	fmt.Println("扫链 交易hash", receipts.BlockHash)
+	for j := 0; j < len(receipts.Logs); j++ {
+		vlog := receipts.Logs[j]
+		jsonData, err := json.Marshal(vlog.Topics)
 		if err != nil {
-			log.Fatal("对监听到的DATA数据进行解析，发生错误", err)
+			fmt.Println("转换为JSON时出错:", err)
 			return
 		}
+		makeBlockLogs := blocks.MakeBlockEvents(nil)
+		makeBlockLogs.Address = vlog.Address
+		makeBlockLogs.BlockNumber = int(receipts.BlockNumber)
+		makeBlockLogs.BlockHash = receipts.BlockHash
+		makeBlockLogs.LogIndex = int(vlog.LogIndex)
+		makeBlockLogs.Topics = string(jsonData)
+		makeBlockLogs.Data = vlog.Data[2:]
 		//这步是对监听到的DATA数据进行解析
-		implEventByLogs(vlog.Topics, decodedVData, hash, int(vlog.LogIndex))
+		implEventByLogs(makeBlockLogs)
 	}
 }
 

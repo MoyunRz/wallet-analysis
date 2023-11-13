@@ -15,13 +15,7 @@ var EthClient *ethclient.Client
 func InitClient() {
 	var err error
 	//EventAbi, err = GetABI()
-	EventAbi, err = GetStringToABI(eventAbiStr)
-	if err != nil {
-		log.Error("获取ABI对象 event path error:", err)
-		log.Fatal(err)
-		return
-	}
-	EthClient, err = ethclient.Dial("ws://119.23.219.232:9944")
+	EthClient, err = ethclient.Dial("ws://121.41.66.213:9944")
 	if err != nil {
 		log.Error("连接私链失败:", err)
 		log.Fatal(err)
@@ -30,7 +24,7 @@ func InitClient() {
 }
 
 func MakeClient() (*ethclient.Client, error) {
-	ethClient, err := ethclient.Dial("ws://119.23.219.232:9944")
+	ethClient, err := ethclient.Dial("ws://121.41.66.213:9944")
 	if err != nil {
 		log.Error("连接私链失败:", err)
 		log.Fatal(err)

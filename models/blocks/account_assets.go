@@ -23,7 +23,12 @@ type AccountAssets struct {
 func (a *AccountAssets) TableName() string {
 	return "account_assets"
 }
-
+func init() {
+	err := db.ConnDB().Sync(new(AccountAssets))
+	if err != nil {
+		panic(err)
+	}
+}
 func MakeAssets(session *xorm.Session) (a *AccountAssets) {
 	a = new(AccountAssets)
 	if session != nil {

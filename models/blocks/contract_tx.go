@@ -30,6 +30,13 @@ func (c *ContractTx) TableName() string {
 	return "contract_tx"
 }
 
+func init() {
+	err := db.ConnDB().Sync(new(ContractTx))
+	if err != nil {
+		panic(err)
+	}
+}
+
 func MakeContractTx(session *xorm.Session) (c *ContractTx) {
 	c = new(ContractTx)
 	if session != nil {

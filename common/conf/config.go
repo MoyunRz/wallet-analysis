@@ -8,9 +8,6 @@ var Cfg = new(Config)
 
 var defConfFile = "app.toml"
 
-const ABI1155 = "erc1155.abi"
-const ForwarderAbi = "forwarder.abi"
-
 var UseDataBase = DatabaseConfig{}
 
 func init() {

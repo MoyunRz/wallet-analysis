@@ -11,9 +11,11 @@ func main() {
 	go func() {
 		service.ScanBlock()
 	}()
-	go func() {
-		service.StartSubscribe()
-	}()
+
+	//go func() {
+	//	service.StartSubscribe()
+	//}()
+
 	r := router.InitRouters("eth")
 	err := r.Run(fmt.Sprintf(":%d", conf.Cfg.ServerPort))
 	if err != nil {

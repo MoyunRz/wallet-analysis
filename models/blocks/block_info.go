@@ -26,7 +26,12 @@ type BlockInfo struct {
 func (b *BlockInfo) TableName() string {
 	return "block_info"
 }
-
+func init() {
+	err := db.ConnDB().Sync(new(BlockInfo))
+	if err != nil {
+		panic(err)
+	}
+}
 func MakeBlockInfo(session *xorm.Session) (b *BlockInfo) {
 	b = new(BlockInfo)
 	if session != nil {

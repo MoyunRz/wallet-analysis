@@ -21,7 +21,12 @@ type BlockToken struct {
 func (b *BlockToken) TableName() string {
 	return "block_token"
 }
-
+func init() {
+	err := db.ConnDB().Sync(new(BlockToken))
+	if err != nil {
+		panic(err)
+	}
+}
 func MakeBlockToken(session *xorm.Session) (b *BlockToken) {
 	b = new(BlockToken)
 	if session != nil {
