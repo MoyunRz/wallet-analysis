@@ -51,7 +51,7 @@ func (b *BlockLogs) Insert() error {
 
 func (b *BlockLogs) GetLogs() (*BlockLogs, error) {
 	nb := new(BlockLogs)
-	_, err := b.Session.Where("block_hash =? and log_index =? and address=?", b.BlockHash, b.BlockHash, b.Address).Get(nb)
+	_, err := b.Session.Where("block_number =? and log_index =? and address=?", b.BlockNumber, b.LogIndex, b.Address).Get(nb)
 	if err != nil {
 		return nil, err
 	}

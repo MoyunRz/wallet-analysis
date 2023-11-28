@@ -11,9 +11,14 @@ func init() {
 }
 
 func implEventByLogs(makeBlockLogs *blocks.BlockLogs) {
-	if v, e := makeBlockLogs.GetLogs(); e != nil && v != nil {
+	v, e := makeBlockLogs.GetLogs()
+	if e != nil {
 		return
 	}
+	if v != nil && v.Id != 0 {
+		return
+	}
+
 	err := makeBlockLogs.Insert()
 	if err != nil {
 		return
